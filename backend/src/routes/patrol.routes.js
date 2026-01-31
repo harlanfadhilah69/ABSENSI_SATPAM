@@ -9,14 +9,19 @@ const upload = require("../middlewares/upload.middleware");
 
 const patrolController = require("../controllers/patrol.controller");
 
-// scan QR (boleh tanpa auth dulu, tapi kita pakai auth agar aman)
-router.get(
-  "/scan",
+// scan QR (PUBLIC)
+router.get("/scan", patrolController.scan);
+
+// submit patroli (tetap wajib login satpam)
+router.post(
+  "/submit",
   auth,
   role(["satpam"]),
   active,
-  patrolController.scan
+  upload.single("photo"),
+  patrolController.submit
 );
+
 
 // submit patroli (selfie)
 router.post(

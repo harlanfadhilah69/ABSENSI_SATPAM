@@ -6,6 +6,7 @@ const tokenService = require("../services/token.service");
 exports.scan = async (req, res, next) => {
   try {
     const { post_id, token } = req.query;
+
     if (!post_id || !token) {
       return res.status(400).json({ message: "post_id dan token wajib ada" });
     }
@@ -31,10 +32,11 @@ exports.scan = async (req, res, next) => {
 
 exports.submit = async (req, res, next) => {
   try {
-    // satpam user from auth middleware
     const user = req.user;
 
-    const { post_id, token, note } = req.body;
+    // ✅ ambil GPS + data lain dari body
+    const { post_id, token, note, lat, lng, accuracy } = req.body;
+
     if (!post_id || !token) {
       return res.status(400).json({ message: "post_id dan token wajib ada" });
     }
@@ -54,12 +56,20 @@ exports.submit = async (req, res, next) => {
       return res.status(401).json({ message: "Token QR tidak valid / kadaluarsa" });
     }
 
+    // ✅ parsing GPS supaya tidak string
+    const parsedLat = lat !== undefined && lat !== "" ? Number(lat) : null;
+    const parsedLng = lng !== undefined && lng !== "" ? Number(lng) : null;
+    const parsedAcc = accuracy !== undefined && accuracy !== "" ? Number(accuracy) : null;
+
     const result = await patrolService.createPatrolLog({
       userId: user.id,
       postId: post_id,
       note: note || "",
       photoFile: req.file,
       deviceInfo: req.headers["user-agent"] || "",
+      lat: parsedLat,
+      lng: parsedLng,
+      accuracy: parsedAcc,
     });
 
     res.status(201).json({

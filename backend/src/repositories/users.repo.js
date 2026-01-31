@@ -20,11 +20,32 @@ exports.findByUsername = async (username) => {
     "SELECT * FROM users WHERE username = ? LIMIT 1",
     [username]
   );
-  return rows.length ? rows[0] : null; // raw row (for password check)
+  return rows[0] || null; // raw row (dipakai untuk cek password_hash)
 };
 
 exports.verifyPassword = async (password, hash) => {
   return bcrypt.compare(password, hash);
+};
+
+// ✅ REGISTER UMUM (admin / satpam)
+// dipakai oleh POST /auth/register
+exports.create = async ({ name = "", username, password, role }) => {
+  const pool = await getPool();
+  const hash = await bcrypt.hash(password, SALT_ROUNDS);
+
+  const [result] = await pool.query(
+    `INSERT INTO users (name, username, password_hash, role, is_active)
+     VALUES (?, ?, ?, ?, 1)`,
+    [name, username, hash, role]
+  );
+
+  // ❗ jangan pakai this.findById (rawan this undefined)
+  return exports.findById(result.insertId);
+};
+
+// ✅ alias supaya controller lama yang manggil createUser() tetap jalan
+exports.createUser = async (payload) => {
+  return exports.create(payload);
 };
 
 exports.listSatpam = async () => {
@@ -36,16 +57,8 @@ exports.listSatpam = async () => {
 };
 
 exports.createSatpam = async ({ name, username, password }) => {
-  const pool = await getPool();
-  const hash = await bcrypt.hash(password, SALT_ROUNDS);
-
-  const [result] = await pool.query(
-    `INSERT INTO users (name, username, password_hash, role, is_active)
-     VALUES (?, ?, ?, 'satpam', 1)`,
-    [name, username, hash]
-  );
-
-  return this.findById(result.insertId);
+  // ❗ jangan pakai this.create
+  return exports.create({ name, username, password, role: "satpam" });
 };
 
 exports.updateUser = async (id, payload) => {
@@ -65,7 +78,7 @@ exports.updateUser = async (id, payload) => {
     values.push(await bcrypt.hash(payload.password, SALT_ROUNDS));
   }
 
-  if (!fields.length) return this.findById(id);
+  if (!fields.length) return exports.findById(id);
 
   values.push(id);
 
@@ -75,7 +88,7 @@ exports.updateUser = async (id, payload) => {
     values
   );
 
-  return this.findById(id);
+  return exports.findById(id);
 };
 
 exports.setActive = async (id, isActive) => {
@@ -84,5 +97,5 @@ exports.setActive = async (id, isActive) => {
     isActive ? 1 : 0,
     id,
   ]);
-  return this.findById(id);
+  return exports.findById(id);
 };

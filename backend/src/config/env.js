@@ -20,6 +20,10 @@ const env = {
   // Upload
   UPLOAD_DIR: process.env.UPLOAD_DIR || "uploads/patrol_photos",
   MAX_UPLOAD_MB: Number(process.env.MAX_UPLOAD_MB || 5),
+
+  FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:5173",
+BACKEND_URL: process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3000}`,
+
 };
 
 module.exports = env;

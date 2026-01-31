@@ -1,30 +1,36 @@
-// src/routes/admin.routes.js
+// backend/src/routes/admin.routes.js
 const express = require("express");
 const router = express.Router();
 
 const auth = require("../middlewares/auth.middleware");
 const role = require("../middlewares/role.middleware");
+const active = require("../middlewares/active.middleware");
 
-const usersController = require("../controllers/admin/users.controller");
 const postsController = require("../controllers/admin/posts.controller");
 const reportsController = require("../controllers/admin/reports.controller");
 
-// middleware global admin
-router.use(auth, role(["admin"]));
+// middleware chain biar tidak ngulang-ngulang
+const adminOnly = [auth, role(["admin"]), active];
 
-// users (satpam)
-router.get("/users", usersController.list);
-router.post("/users", usersController.create);
-router.patch("/users/:id", usersController.update);
-router.patch("/users/:id/active", usersController.setActive);
+// ======================
+// POS (admin)
+// ======================
+router.get("/posts", ...adminOnly, postsController.list);
+router.post("/posts", ...adminOnly, postsController.create);
+router.put("/posts/:id", ...adminOnly, postsController.update);
 
-// posts (pos patroli)
-router.get("/posts", postsController.list);
-router.post("/posts", postsController.create);
-router.patch("/posts/:id", postsController.update);
-router.get("/posts/:id/qr", postsController.qrLink);
+// ✅ HAPUS POS
+router.delete("/posts/:id", ...adminOnly, postsController.remove);
 
-// reports
-router.get("/reports/patrol-logs", reportsController.listLogs);
+// generate link + token QR untuk pos
+router.get("/posts/:id/qr", ...adminOnly, postsController.qrLink);
+
+// ======================
+// REPORTS (admin)
+// ======================
+router.get("/reports", ...adminOnly, reportsController.listLogs);
+
+// ✅ NO 3: HAPUS HISTORI PATROLI (admin)
+router.delete("/reports/:id", ...adminOnly, reportsController.deleteLog);
 
 module.exports = router;

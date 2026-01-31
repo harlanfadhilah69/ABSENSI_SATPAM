@@ -58,3 +58,27 @@ exports.update = async (id, payload) => {
 
   return this.findById(id);
 };
+
+// ✅ DELETE POS (AMAN)
+exports.deleteById = async (id) => {
+  const pool = await getPool();
+
+  // ❗ Cegah hapus kalau sudah ada histori patroli
+  const [used] = await pool.query(
+    "SELECT COUNT(*) AS cnt FROM patrol_logs WHERE post_id = ?",
+    [id]
+  );
+
+  if ((used[0]?.cnt || 0) > 0) {
+    const err = new Error("Pos sudah memiliki histori patroli, tidak bisa dihapus.");
+    err.status = 409;
+    throw err;
+  }
+
+  const [result] = await pool.query(
+    "DELETE FROM posts WHERE id = ?",
+    [id]
+  );
+
+  return result.affectedRows; // 1 = sukses, 0 = tidak ditemukan
+};
