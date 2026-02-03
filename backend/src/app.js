@@ -12,7 +12,10 @@ const app = express();
 // ✅ CORS (boleh lebih ketat kalau mau)
 app.use(
   cors({
-    origin: env.FRONTEND_URL, // contoh: http://localhost:5173
+    origin: [
+        'http://localhost:5173', 
+        'http://192.168.0.113:5173' // <--- INI WAJIB ADA
+    ],
     credentials: true,
   })
 );

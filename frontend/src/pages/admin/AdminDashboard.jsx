@@ -20,6 +20,10 @@ export default function AdminDashboard() {
 
   const logoSrc = "/logo.png";
 
+  // --- GANTI IP INI SESUAI IP LAPTOP KAMU ---
+  const MY_LAPTOP_IP = "http://192.168.0.113:5173"; 
+  // ------------------------------------------
+
   useEffect(() => {
     fetchPosts();
     // eslint-disable-next-line
@@ -41,18 +45,31 @@ export default function AdminDashboard() {
   async function handleGenerateQR(postId) {
     setQrStatus("");
     try {
+      // 1. Minta data token dari backend
       const res = await api.get(`/admin/posts/${postId}/qr`);
       const data = res.data;
 
       setQrMeta(data);
-      setQrUrl(data?.url || "");
 
+      // 2. MODIFIKASI URL DI SINI
+      // Backend mungkin mengirim url seperti: "http://localhost:5173/scan?..."
+      // Kita harus paksa ubah bagian depannya menjadi IP Laptop.
+      
       if (data?.url) {
-        await navigator.clipboard.writeText(data.url);
-        setQrStatus("QR link dicopy ✅");
-        setTimeout(() => setQrStatus(""), 2500);
+        // Ambil path dan query stringnya saja (misal: /scan?post_id=1&token=xyz)
+        const urlObj = new URL(data.url); 
+        const pathAndQuery = urlObj.pathname + urlObj.search;
+        
+        // Gabungkan dengan IP Laptop
+        const finalUrl = `${MY_LAPTOP_IP}${pathAndQuery}`;
+        
+        setQrUrl(finalUrl);
+
+        
       }
+
     } catch (e) {
+      console.error(e); // Cek error di console
       setQrStatus(e?.response?.data?.message || "Gagal generate QR");
     }
   }
@@ -69,7 +86,6 @@ export default function AdminDashboard() {
     try {
       await api.delete(`/admin/posts/${post.id}`);
 
-      // kalau QR sedang tampil berasal dari pos ini, bersihkan
       if (qrMeta?.post?.id === post.id) {
         setQrUrl("");
         setQrMeta(null);
@@ -119,21 +135,18 @@ export default function AdminDashboard() {
               📄 Lihat Laporan Patroli
             </Link>
 
-            {/* ✅ tombol tambah pos (halaman baru) */}
             <button onClick={() => nav("/admin/posts/new")} style={btn}>
               ➕ Tambah Pos
             </button>
           </div>
         </div>
 
-        {/* INFO MSG */}
         {msg && (
           <div style={{ marginTop: 12, color: msg.startsWith("✅") ? "#0a0" : "crimson", fontWeight: 700 }}>
             {msg}
           </div>
         )}
 
-        {/* STATUS QR */}
         {qrStatus && (
           <div style={{ marginTop: 16 }}>
             <div style={{ color: "#0a0", fontWeight: 700 }}>{qrStatus}</div>
@@ -155,7 +168,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* AREA QR */}
         {qrUrl && (
           <div
             style={{
@@ -215,7 +227,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* LIST POS */}
         <div style={{ marginTop: 18, ...card }}>
           <h2 style={{ marginTop: 0 }}>Daftar Pos</h2>
 
@@ -250,7 +261,6 @@ export default function AdminDashboard() {
                       Generate QR
                     </button>
 
-                    {/* ✅ Edit ke halaman baru */}
                     <button onClick={() => nav(`/admin/posts/${p.id}/edit`)} style={{ ...btn, background: "#fff" }}>
                       Edit
                     </button>
@@ -265,7 +275,6 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* tombol refresh list */}
         <div style={{ marginTop: 12 }}>
           <button onClick={fetchPosts} style={btn}>🔄 Refresh</button>
         </div>

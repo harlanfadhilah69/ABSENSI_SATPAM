@@ -21,15 +21,22 @@ export default function Patrol() {
   const [params] = useSearchParams();
   const nav = useNavigate();
 
-  const postId = params.get("post_id");
+  // Ambil data dari URL (Jika Scan QR)
+  const urlPostId = params.get("post_id");
   const tokenQR = params.get("token");
+
+  // ✅ STATE BARU: Untuk menampung pilihan manual jika tidak scan QR
+  const [manualPostId, setManualPostId] = useState("");
+
+  // ✅ PENENTUAN ID POS: Jika ada token pakai dari URL, jika tidak pakai yang manual
+  const finalPostId = tokenQR ? urlPostId : manualPostId;
 
   const [note, setNote] = useState("");
   const [msg, setMsg] = useState("");
 
-  // ✅ Info Pos (dari endpoint scan)
-  const [postInfo, setPostInfo] = useState(null); // { id, post_name, location_desc }
-  const [postStatus, setPostStatus] = useState("Memuat info pos...");
+  // Info Pos (dari endpoint scan - khusus jalur QR)
+  const [postInfo, setPostInfo] = useState(null); 
+  const [postStatus, setPostStatus] = useState(tokenQR ? "Memuat info pos..." : "Mode Input Manual");
 
   // GPS
   const [gps, setGps] = useState({ lat: null, lng: null, accuracy: null });
@@ -44,7 +51,7 @@ export default function Patrol() {
   const [photoBlob, setPhotoBlob] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
 
-  // ✅ jangan pakai !!gps.lat karena 0 bisa valid
+  // ✅ PERUBAHAN VALIDASI: Cukup cek finalPostId, tokenQR tidak lagi wajib
   const canSubmit = useMemo(() => {
     const gpsOk =
       gps.lat !== null &&
@@ -54,14 +61,13 @@ export default function Patrol() {
       gps.lng !== undefined &&
       gps.lng !== "";
 
-    return !!postId && !!tokenQR && !!photoBlob && gpsOk;
-  }, [postId, tokenQR, photoBlob, gps.lat, gps.lng]);
+    return !!finalPostId && !!photoBlob && gpsOk;
+  }, [finalPostId, photoBlob, gps.lat, gps.lng]);
 
-  // ✅ 0) Fetch info pos dari QR (scan)
+  // 0) Fetch info pos dari QR (Hanya jalan jika ada token QR)
   useEffect(() => {
     const fetchPostInfo = async () => {
-      if (!postId || !tokenQR) {
-        setPostStatus("QR tidak lengkap (post_id/token kosong)");
+      if (!urlPostId || !tokenQR) {
         setPostInfo(null);
         return;
       }
@@ -69,7 +75,7 @@ export default function Patrol() {
       setPostStatus("Memuat info pos...");
       try {
         const res = await api.get("/patrol/scan", {
-          params: { post_id: postId, token: tokenQR },
+          params: { post_id: urlPostId, token: tokenQR },
         });
 
         setPostInfo(res.data?.post || null);
@@ -81,7 +87,7 @@ export default function Patrol() {
     };
 
     fetchPostInfo();
-  }, [postId, tokenQR]);
+  }, [urlPostId, tokenQR]);
 
   // 1) Start GPS
   useEffect(() => {
@@ -135,57 +141,55 @@ export default function Patrol() {
     };
   }, []);
 
-  // 3) Validasi QR minimal (kalau link tidak lengkap)
-  useEffect(() => {
-    if (!postId || !tokenQR) {
-      setMsg("QR tidak lengkap. Pastikan link berisi post_id dan token.");
-    }
-  }, [postId, tokenQR]);
-
   const capturePhoto = () => {
-  setMsg("");
-  const video = videoRef.current;
-  const canvas = canvasRef.current;
-  if (!video || !canvas) return;
+    setMsg("");
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
 
-  const w = video.videoWidth || 640;
-  const h = video.videoHeight || 480;
+    const w = video.videoWidth || 640;
+    const h = video.videoHeight || 480;
 
-  canvas.width = w;
-  canvas.height = h;
+    canvas.width = w;
+    canvas.height = h;
 
-  const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d");
 
-  // ✅ FIX: UN-MIRROR FOTO (balik horizontal)
-  ctx.save();
-  ctx.translate(w, 0);
-  ctx.scale(-1, 1);
-  ctx.drawImage(video, 0, 0, w, h);
-  ctx.restore();
+    // FIX: UN-MIRROR FOTO (balik horizontal)
+    ctx.save();
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, w, h);
+    ctx.restore();
 
-  canvas.toBlob(
-    (blob) => {
-      if (!blob) return;
-      setPhotoBlob(blob);
-      setPhotoPreview(URL.createObjectURL(blob));
-    },
-    "image/jpeg",
-    0.9
-  );
-};
-
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        setPhotoBlob(blob);
+        setPhotoPreview(URL.createObjectURL(blob));
+      },
+      "image/jpeg",
+      0.9
+    );
+  };
 
   const submit = async () => {
     setMsg("");
 
     try {
-      if (!postId || !tokenQR) return setMsg("QR tidak lengkap.");
+      // ✅ PERUBAHAN: Validasi hanya cek finalPostId
+      if (!finalPostId) return setMsg("Harap pilih Pos terlebih dahulu.");
       if (!photoBlob) return setMsg("Foto belum diambil.");
       if (gps.lat === null || gps.lng === null) return setMsg("GPS belum dapat lokasi.");
 
       const fd = new FormData();
-      fd.append("post_id", postId);
-      fd.append("token", tokenQR);
+      fd.append("post_id", finalPostId);
+      
+      // ✅ PERUBAHAN: Kirim token hanya jika ada
+      if (tokenQR) {
+        fd.append("token", tokenQR);
+      }
+
       fd.append("note", note);
       fd.append("lat", String(gps.lat));
       fd.append("lng", String(gps.lng));
@@ -198,8 +202,6 @@ export default function Patrol() {
 
       setMsg(res.data?.message || "Berhasil submit ✅");
 
-      // optional: balik ke home satpam
-      // nav("/satpam");
     } catch (err) {
       setMsg(err?.response?.data?.message || "Gagal submit");
     }
@@ -207,7 +209,7 @@ export default function Patrol() {
 
   const openGoogleMaps = () => {
     if (gps.lat === null || gps.lng === null) return;
-    window.open(`https://www.google.com/maps?q=${gps.lat},${gps.lng}`, "_blank");
+    window.open(`https://www.google.com/maps?q=$${gps.lat},${gps.lng}`, "_blank");
   };
 
   return (
@@ -220,34 +222,55 @@ export default function Patrol() {
         </div>
       )}
 
-      {/* ✅ TAMPILKAN NAMA POS */}
+      {/* ✅ PERUBAHAN UI: TAMPILAN POS DINAMIS (QR vs MANUAL) */}
       <div style={{ marginBottom: 12, padding: 12, border: "1px solid #ddd" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: 14 }}>
-              <b>Pos:</b> {postInfo?.post_name || "-"}{" "}
-              {postInfo?.id ? <span style={{ color: "#777" }}>(ID: {postInfo.id})</span> : null}
-            </div>
-            {postInfo?.location_desc ? (
-              <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
-                <b>Lokasi:</b> {postInfo.location_desc}
-              </div>
-            ) : null}
-
-            <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
-              Status QR: {postStatus}
-            </div>
-          </div>
-
-          <div style={{ fontSize: 12, color: "#666" }}>
+        {tokenQR ? (
+          // --- TAMPILAN JIKA MASUK LEWAT SCAN QR ---
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
             <div>
-              <b>post_id:</b> {postId || "-"}
+              <div style={{ fontSize: 14 }}>
+                <b>Pos:</b> {postInfo?.post_name || "-"}{" "}
+                {postInfo?.id ? <span style={{ color: "#777" }}>(ID: {postInfo.id})</span> : null}
+              </div>
+              {postInfo?.location_desc ? (
+                <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
+                  <b>Lokasi:</b> {postInfo.location_desc}
+                </div>
+              ) : null}
+
+              <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
+                Status QR: {postStatus}
+              </div>
+            </div>
+
+            <div style={{ fontSize: 12, color: "#666" }}>
+              <div>
+                <b>post_id:</b> {urlPostId || "-"}
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          // --- TAMPILAN JIKA INPUT MANUAL (TANPA QR) ---
+          <div>
+            <label style={{ fontSize: 14, fontWeight: "bold" }}>Pilih Pos (Input Manual):</label>
+            <select
+              value={manualPostId}
+              onChange={(e) => setManualPostId(e.target.value)}
+              style={{ width: "100%", padding: "8px", marginTop: "8px" }}
+            >
+              <option value="" disabled>-- Pilih Lokasi Pos --</option>
+              <option value="1">Pos Gerbang Utama (ID: 1)</option>
+              <option value="2">Lobby Utama (ID: 2)</option>
+              <option value="3">Pos Belakang (ID: 3)</option>
+            </select>
+            <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
+              Status: Mode Input Manual (Bypass QR)
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* GPS */}
+      {/* GPS (Kode sama) */}
       <div style={{ padding: 12, border: "1px solid #ddd", marginBottom: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
           <div>
@@ -286,7 +309,7 @@ export default function Patrol() {
         )}
       </div>
 
-      {/* Kamera */}
+      {/* Kamera (Kode sama) */}
       <div style={{ padding: 12, border: "1px solid #ddd", marginBottom: 14 }}>
         <b>Foto Selfie (kamera):</b>{" "}
         <span style={{ marginLeft: 8, color: "#555" }}>{cameraStatus}</span>
@@ -303,7 +326,7 @@ export default function Patrol() {
                 width: "100%",
                 borderRadius: 6,
                 background: "#000",
-                transform: "scaleX(-1)", // ✅ FIX PREVIEW TIDAK MIRROR
+                transform: "scaleX(-1)", 
               }}
             />
 
