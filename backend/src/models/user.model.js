@@ -4,6 +4,7 @@ class User {
   constructor(row) {
     this.id = row.id;
     this.name = row.name;
+    this.email = data.email; // Tambahkan ini
     this.username = row.username;
     this.role = row.role; // admin | satpam
     this.is_active = Boolean(row.is_active);

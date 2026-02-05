@@ -11,6 +11,8 @@ import SatpamHome from "../pages/satpam/Home";
 import Reports from "../pages/admin/Reports";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import PostForm from "../pages/admin/PostForm";
+// ✅ Import Halaman Kelola User Baru
+import ManageUsers from "../pages/admin/ManageUsers";
 
 export default function AppRoutes() {
   return (
@@ -69,7 +71,16 @@ export default function AppRoutes() {
         }
       />
 
-      {/* ✅ HALAMAN TAMBAH POS */}
+      {/* ✅ HALAMAN KELOLA USER */}
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute role="admin">
+            <ManageUsers />
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/admin/posts/new"
         element={
@@ -79,7 +90,6 @@ export default function AppRoutes() {
         }
       />
 
-      {/* ✅ HALAMAN EDIT POS */}
       <Route
         path="/admin/posts/:id/edit"
         element={

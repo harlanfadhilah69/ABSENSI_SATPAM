@@ -1,4 +1,3 @@
-// src/repositories/posts.repo.js
 const { getPool } = require("../config/db");
 const Post = require("../models/post.model");
 
@@ -21,6 +20,7 @@ exports.findById = async (id) => {
 
 exports.create = async ({ post_name, location_desc }) => {
   const pool = await getPool();
+  // ✅ PERBAIKAN: Hapus koma ekstra dan tambahkan is_active di bagian kolom
   const [result] = await pool.query(
     `INSERT INTO posts (post_name, location_desc, is_active)
      VALUES (?, ?, 1)`,
@@ -59,11 +59,9 @@ exports.update = async (id, payload) => {
   return this.findById(id);
 };
 
-// ✅ DELETE POS (AMAN)
 exports.deleteById = async (id) => {
   const pool = await getPool();
 
-  // ❗ Cegah hapus kalau sudah ada histori patroli
   const [used] = await pool.query(
     "SELECT COUNT(*) AS cnt FROM patrol_logs WHERE post_id = ?",
     [id]
@@ -80,5 +78,5 @@ exports.deleteById = async (id) => {
     [id]
   );
 
-  return result.affectedRows; // 1 = sukses, 0 = tidak ditemukan
+  return result.affectedRows; 
 };

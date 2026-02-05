@@ -1,21 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../api/axios";
 import AdminNavbar from "../../components/admin/AdminNavbar";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function Reports() {
-  // --- STATE FILTER ---
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [satpam, setSatpam] = useState("");
   const [pos, setPos] = useState("");
-
   const [msg, setMsg] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // --- STATE PAGINATION (BARU) ---
+  // --- STATE PAGINATION ---
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 4; // Tampilkan 4 baris per halaman
+  const itemsPerPage = 4;
 
   const baseApi = useMemo(() => {
     const raw = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -28,243 +28,215 @@ export default function Reports() {
     return `${baseApi}/${clean}`;
   };
 
-  const hasGPS = (r) => {
-    const latOk = r.lat !== null && r.lat !== undefined && r.lat !== "";
-    const lngOk = r.lng !== null && r.lng !== undefined && r.lng !== "";
-    return latOk && lngOk;
-  };
-
   const formatDateTime = (value) => {
     if (!value) return "-";
     const d = new Date(value);
-    if (isNaN(d.getTime())) return String(value);
     return d.toLocaleString("id-ID", {
-      year: "numeric", month: "2-digit", day: "2-digit",
+      day: "2-digit", month: "2-digit", year: "numeric",
       hour: "2-digit", minute: "2-digit", second: "2-digit",
-    });
+    }).replace(/\./g, ':');
   };
 
   const fetchData = async () => {
-    setMsg("");
     setLoading(true);
     try {
-      const params = {};
-      if (dateFrom) params.date_from = dateFrom;
-      if (dateTo) params.date_to = dateTo;
-      if (satpam.trim()) params.satpam = satpam.trim();
-      if (pos.trim()) params.pos = pos.trim();
-
+      const params = { date_from: dateFrom, date_to: dateTo, satpam: satpam.trim(), pos: pos.trim() };
       const res = await api.get("/admin/reports", { params });
       setRows(res.data?.data || []);
-      setCurrentPage(1); // Reset ke halaman 1 setiap kali ambil data baru
+      setCurrentPage(1);
     } catch (e) {
-      setMsg(e?.response?.data?.message || "Gagal ambil laporan");
-      setRows([]);
+      setMsg("Gagal ambil laporan");
     } finally {
       setLoading(false);
     }
   };
 
   const resetFilter = () => {
-    setDateFrom("");
-    setDateTo("");
-    setSatpam("");
-    setPos("");
-    setMsg("");
-    setTimeout(fetchData, 0);
+    setDateFrom(""); setDateTo(""); setSatpam(""); setPos("");
+    fetchData();
+  };
+
+  const exportPDF = (isCurrentPageOnly = false) => {
+    const doc = new jsPDF("l", "mm", "a4");
+    const dataToExport = isCurrentPageOnly ? currentRows : rows;
+    doc.text(`LAPORAN PATROLI ${isCurrentPageOnly ? 'HALAMAN ' + currentPage : 'TOTAL'}`, 14, 15);
+    autoTable(doc, {
+      head: [["No", "Waktu", "Satpam", "Pos", "Catatan", "GPS"]],
+      body: dataToExport.map((r, i) => [
+        isCurrentPageOnly ? (indexOfFirstItem + i + 1) : (i + 1),
+        formatDateTime(r.captured_at_server || r.created_at),
+        r.satpam_name || "-", r.post_name || "-", r.note || "-", r.lat ? `${r.lat}, ${r.lng}` : "-"
+      ]),
+      startY: 25,
+      headStyles: { fillColor: [6, 78, 59] }
+    });
+    doc.save(`Laporan_Patroli.pdf`);
   };
 
   const handleDelete = async (row) => {
-    setMsg("");
-    const ok = window.confirm(
-      `Hapus histori patroli ini?\n\nSatpam: ${row.satpam_name || row.username}\nPos: ${row.post_name}\nWaktu: ${formatDateTime(row.captured_at_server)}`
-    );
-    if (!ok) return;
-
+    if (!window.confirm("Hapus histori ini?")) return;
     try {
       await api.delete(`/admin/reports/${row.id}`);
-      setMsg("✅ Histori patroli berhasil dihapus");
       fetchData();
-    } catch (e) {
-      setMsg(e?.response?.data?.message || "Gagal menghapus histori");
-    }
+    } catch (e) { alert("Gagal menghapus"); }
   };
 
-  useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  // --- LOGIKA PAGINATION ---
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentRows = rows.slice(indexOfFirstItem, indexOfLastItem); // Potong data
+  const currentRows = rows.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(rows.length / itemsPerPage);
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
   return (
-    <div>
-      <AdminNavbar />
-
-      <div style={{ maxWidth: 1200, margin: "24px auto", padding: 16, fontFamily: 'sans-serif' }}>
-        <h2 style={{ margin: 0 }}>Jadwal / Laporan Patroli</h2>
-
-        {/* --- FILTER SECTION --- */}
-        <div style={{ display: "flex", gap: 12, alignItems: "end", marginTop: 14, marginBottom: 16, flexWrap: "wrap" }}>
-          <div>
-            <div>Dari</div>
-            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          </div>
-          <div>
-            <div>Sampai</div>
-            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          </div>
-          <div>
-            <div>Nama Satpam</div>
-            <input value={satpam} onChange={(e) => setSatpam(e.target.value)} placeholder="contoh: budi" />
-          </div>
-          <div>
-            <div>Pos</div>
-            <input value={pos} onChange={(e) => setPos(e.target.value)} placeholder="contoh: lobby" />
-          </div>
-          <button onClick={fetchData} style={btn} disabled={loading}>{loading ? "Loading..." : "Filter"}</button>
-          <button onClick={resetFilter} style={{ ...btn, background: "#fff" }} disabled={loading}>Reset</button>
-          {msg && <div style={{ marginLeft: 10, color: msg.startsWith("✅") ? "#0a0" : "crimson" }}>{msg}</div>}
+    <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+          <AdminNavbar />
+      
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px" }}>
+        {/* HEADER */}
+        <div style={{ marginBottom: 30, borderLeft: "8px solid #b08d00", paddingLeft: 20 }}>
+          <h1 style={{ fontSize: 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>Jadwal / Laporan Patroli</h1>
+          <p style={{ color: "#64748b", margin: "5px 0 0 0", fontSize: 14 }}>Sistem Pemantauan Keamanan RS Islam Fatimah</p>
         </div>
 
-        {/* --- TABEL --- */}
-        <div style={{ overflowX: "auto" }}>
-          <table width="100%" border="1" cellPadding="10" style={{ borderCollapse: "collapse", minWidth: 1000 }}>
+        {/* FILTER CARD */}
+        <div style={filterCard}>
+          <div style={gridFilter}>
+            <div style={inputGroup}>
+              <label style={labelStyle}>DARI TANGGAL</label>
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={inputStyle} />
+            </div>
+            <div style={inputGroup}>
+              <label style={labelStyle}>SAMPAI TANGGAL</label>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={inputStyle} />
+            </div>
+            <div style={inputGroup}>
+              <label style={labelStyle}>NAMA SATPAM</label>
+              <input value={satpam} onChange={(e) => setSatpam(e.target.value)} placeholder="Cari nama..." style={inputStyle} />
+            </div>
+            <div style={inputGroup}>
+              <label style={labelStyle}>LOKASI POS</label>
+              <input value={pos} onChange={(e) => setPos(e.target.value)} placeholder="Cari pos..." style={inputStyle} />
+            </div>
+          </div>
+          
+          <div style={{ marginTop: 25, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button onClick={fetchData} style={btnFilter}>FILTER</button>
+              <button onClick={resetFilter} style={btnReset}>RESET</button>
+            </div>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button onClick={() => exportPDF(true)} style={btnExportPage}>📄 CETAK PDF (HALAMAN INI)</button>
+              <button onClick={() => exportPDF(false)} style={btnExportAll}>📄 CETAK PDF (SEMUA)</button>
+            </div>
+          </div>
+        </div>
+
+        {/* TABLE SECTION */}
+        <div style={tableContainer}>
+          <table width="100%" style={{ borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#f3f4f6" }}>
-                <th>Waktu</th>
-                <th>Satpam</th>
-                <th>Pos</th>
-                <th>Catatan</th>
-                <th>GPS</th>
-                <th>Foto</th>
-                <th>Aksi</th>
+              <tr style={tableHeader}>
+                <th style={thStyle}>WAKTU</th>
+                <th style={thStyle}>SATPAM</th>
+                <th style={thStyle}>POS</th>
+                <th style={thStyle}>CATATAN</th>
+                <th style={thStyle}>GPS</th>
+                <th style={thStyle}>FOTO</th>
+                <th style={thStyle}>AKSI</th>
               </tr>
             </thead>
             <tbody>
-              {currentRows.length === 0 ? (
-                <tr>
-                  <td colSpan="7" align="center">{loading ? "Memuat..." : "Tidak ada data"}</td>
+              {currentRows.map((r) => (
+                <tr key={r.id} style={trStyle}>
+                  <td style={tdStyle}>{formatDateTime(r.captured_at_server || r.created_at)}</td>
+                  <td style={{ ...tdStyle, fontWeight: "700" }}>{r.satpam_name || r.username}</td>
+                  <td style={tdStyle}>{r.post_name || "-"}</td>
+                  <td style={{ ...tdStyle, fontStyle: "italic", color: "#64748b" }}>"{r.note || "-"}"</td>
+                  <td style={tdStyle}>
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>{r.lat ? `${r.lat}, ${r.lng}` : "-"}</div>
+                    {r.lat && <a href={`http://googleusercontent.com/maps.google.com/5{r.lat},${r.lng}`} target="_blank" style={linkMaps}>📍 Lihat Maps</a>}
+                  </td>
+                  <td style={tdStyle}>
+                    {r.photo_path ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <img src={fotoUrl(r.photo_path)} style={imgThumb} alt="foto" />
+                        <a href={fotoUrl(r.photo_path)} target="_blank" style={linkAction}>Lihat Foto</a>
+                      </div>
+                    ) : "-"}
+                  </td>
+                  <td style={tdStyle}>
+                    <button onClick={() => handleDelete(r)} style={btnHapus}>HAPUS</button>
+                  </td>
                 </tr>
-              ) : (
-                currentRows.map((r) => {
-                  const gpsOk = hasGPS(r);
-                  const lat = gpsOk ? Number(r.lat) : null;
-                  const lng = gpsOk ? Number(r.lng) : null;
-                  const acc = r.accuracy ? Number(r.accuracy) : null;
-
-                  return (
-                    <tr key={r.id}>
-                      <td>{formatDateTime(r.captured_at_server || r.created_at)}</td>
-                      <td>{r.satpam_name || r.username || (r.user_id ? `#${r.user_id}` : "-")}</td>
-                      <td>{r.post_name || (r.post_id ? `#${r.post_id}` : "-")}</td>
-                      <td style={{ maxWidth: 280 }}>{r.note || "-"}</td>
-                      <td>
-                        {gpsOk ? (
-                          <>
-                            <div style={{ fontSize: 13 }}>
-                              {Number.isFinite(lat) ? lat.toFixed(6) : String(r.lat)},{" "}
-                              {Number.isFinite(lng) ? lng.toFixed(6) : String(r.lng)}
-                            </div>
-                            <a href={`https://www.google.com/maps?q=${r.lat},${r.lng}`} target="_blank" rel="noreferrer" style={{color: 'blue'}}>
-                              Lihat Maps
-                            </a>
-                             {acc && <div style={{ fontSize: 12, color: "#666" }}>Akurasi: ±{Math.round(acc)}m</div>}
-                          </>
-                        ) : "-"}
-                      </td>
-                      <td>
-                        {r.photo_path ? (
-                          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                            <img src={fotoUrl(r.photo_path)} alt="foto" style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 6, border: "1px solid #ddd" }} />
-                            <a href={fotoUrl(r.photo_path)} target="_blank" rel="noreferrer" style={{color: 'blue'}}>Lihat Foto</a>
-                          </div>
-                        ) : "-"}
-                      </td>
-                      <td>
-                        <button onClick={() => handleDelete(r)} style={{ ...btn, background: "#fff", color: "red", borderColor: "#ffcccc" }} disabled={loading}>
-                          Hapus
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
 
-        {/* --- BAGIAN KONTROL PAGINATION (BARU) --- */}
-        {rows.length > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
-            
-            {/* Info Kiri */}
-            <div style={{ color: "#666", fontSize: "14px" }}>
-              Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, rows.length)} of {rows.length} reports
+          {/* PAGINATION */}
+          <div style={paginationArea}>
+            <div style={{ fontSize: 13, color: "#64748b" }}>
+              Menampilkan <b>{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, rows.length)}</b> dari <b>{rows.length}</b> laporan patroli
             </div>
-
-            {/* Tombol Kanan */}
-            <div style={{ display: "flex", gap: "5px" }}>
-              <button 
-                onClick={() => paginate(currentPage - 1)} 
-                disabled={currentPage === 1}
-                style={btnPageStyle(false)}
-              >
-                Prev
-              </button>
-
-              {/* Loop Angka Halaman */}
+            <div style={{ display: "flex", gap: 6 }}>
+              <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} style={btnNav}>PREV</button>
               {Array.from({ length: totalPages }, (_, i) => (
-                <button
-                  key={i + 1}
-                  onClick={() => paginate(i + 1)}
-                  style={btnPageStyle(currentPage === i + 1)}
-                >
-                  {i + 1}
+                <button key={i+1} onClick={() => setCurrentPage(i+1)} style={currentPage === i+1 ? btnPageActive : btnPage}>
+                  {i+1}
                 </button>
               ))}
-
-              <button 
-                onClick={() => paginate(currentPage + 1)} 
-                disabled={currentPage === totalPages}
-                style={btnPageStyle(false)}
-              >
-                Next
-              </button>
+              <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} style={btnNav}>NEXT</button>
             </div>
           </div>
-        )}
-
-        <div style={{ marginTop: 20, fontSize: 12, color: "#999" }}>
-          Tips: Jika GPS "-" pastikan HP satpam mengizinkan lokasi.
         </div>
+
+        {/* INFO BOX */}
+        <div style={infoBox}>
+          <div style={infoIcon}>?</div>
+          <div>
+            <div style={{ fontWeight: "800", fontSize: 12, marginBottom: 5 }}>CATATAN TEKNIS:</div>
+            <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
+              Jika koordinat GPS menampilkan "-", mohon pastikan perangkat mobile petugas telah mengaktifkan layanan lokasi (GPS) dan memberikan izin akses lokasi untuk aplikasi.
+            </div>
+          </div>
+        </div>
+
+        <footer style={footerStyle}>
+          © 2026 <b>RS ISLAM FATIMAH</b> — UNIT KEAMANAN & KETERTIBAN
+        </footer>
       </div>
     </div>
   );
 }
 
-const btn = {
-  padding: "8px 14px",
-  borderRadius: 8,
-  border: "1px solid #ccc",
-  background: "#f6f6f6",
-  cursor: "pointer",
-};
+// --- STYLES ---
+const filterCard = { backgroundColor: "#fff", borderRadius: 15, padding: "25px 30px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", borderTop: "5px solid #b08d00", marginBottom: 30 };
+const gridFilter = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20 };
+const inputGroup = { display: "flex", flexDirection: "column", gap: 8 };
+const labelStyle = { fontSize: 11, fontWeight: "800", color: "#64748b" };
+const inputStyle = { padding: "12px 15px", borderRadius: 10, border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", fontSize: 14, outline: "none" };
 
-// Style tombol pagination
-const btnPageStyle = (isActive) => ({
-  padding: "6px 12px",
-  border: "1px solid #ddd",
-  borderRadius: "6px",
-  backgroundColor: isActive ? "#0e7490" : "#fff", // Biru Tosca jika aktif
-  color: isActive ? "#fff" : "#333",
-  cursor: "pointer",
-  fontWeight: isActive ? "bold" : "normal",
-  opacity: isActive ? 1 : 0.8
-});
+const btnFilter = { backgroundColor: "#064e3b", color: "#fff", padding: "12px 30px", borderRadius: 8, border: "none", fontWeight: "800", cursor: "pointer" };
+const btnReset = { backgroundColor: "#fff", color: "#64748b", padding: "12px 25px", borderRadius: 8, border: "1px solid #e2e8f0", fontWeight: "800", cursor: "pointer" };
+const btnExportPage = { backgroundColor: "#064e3b", color: "#fff", padding: "12px 20px", borderRadius: 8, border: "none", fontWeight: "700", cursor: "pointer", fontSize: 13 };
+const btnExportAll = { backgroundColor: "#064e3b", color: "#fff", padding: "12px 20px", borderRadius: 8, border: "none", fontWeight: "700", cursor: "pointer", fontSize: 13 };
+
+const tableContainer = { backgroundColor: "#fff", borderRadius: 15, overflow: "hidden", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", border: "1px solid #f1f5f9" };
+const tableHeader = { backgroundColor: "#064e3b" };
+const thStyle = { padding: "18px 20px", color: "#fff", fontSize: 11, fontWeight: "700", textAlign: "left", textTransform: "uppercase" };
+const trStyle = { borderBottom: "1px solid #f1f5f9" };
+const tdStyle = { padding: "18px 20px", fontSize: 14, color: "#1e293b" };
+
+const imgThumb = { width: 35, height: 35, borderRadius: 8, objectFit: "cover", border: "1px solid #e2e8f0" };
+const linkAction = { color: "#b08d00", fontSize: 12, fontWeight: "700", textDecoration: "none" };
+const linkMaps = { ...linkAction, display: "block", marginTop: 4 };
+const btnHapus = { backgroundColor: "#fff", color: "#be123c", border: "1.5px solid #ffe4e6", padding: "6px 12px", borderRadius: 6, fontSize: 11, fontWeight: "800", cursor: "pointer" };
+
+const paginationArea = { padding: "20px 25px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9" };
+const btnNav = { padding: "8px 15px", border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", borderRadius: 6, fontWeight: "700", fontSize: 11, cursor: "pointer" };
+const btnPage = { ...btnNav, minWidth: 35 };
+const btnPageActive = { ...btnPage, backgroundColor: "#064e3b", color: "#fff", borderColor: "#064e3b" };
+
+const infoBox = { marginTop: 30, backgroundColor: "#f0fdfa", border: "1.5px solid #ccfbf1", borderRadius: 12, padding: 20, display: "flex", gap: 15, alignItems: "flex-start" };
+const infoIcon = { backgroundColor: "#b08d00", color: "#fff", width: 22, height: 22, borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", fontWeight: "900", fontSize: 12, flexShrink: 0 };
+const footerStyle = { textAlign: "center", marginTop: 60, paddingBottom: 40, borderTop: "1.5px solid #e2e8f0", paddingTop: 30, color: "#94a3b8", fontSize: 12, letterSpacing: 1 };
