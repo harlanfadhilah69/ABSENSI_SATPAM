@@ -1,4 +1,5 @@
 const usersRepo = require("../../repositories/users.repo");
+const bcrypt = require("bcrypt");
 
 exports.list = async (req, res, next) => {
   try {
@@ -45,11 +46,29 @@ exports.resetPassword = async (req, res, next) => {
       return res.status(400).json({ message: "Password minimal 4 karakter" });
     }
 
-    // ✅ Sekarang fungsi updateUser sudah ada di repo
+    // 1. Ambil data user lama dari database untuk mendapatkan password lamanya
+  const user = await usersRepo.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User tidak ditemukan" });
+    }
+
+    // 2. Bandingkan password baru (dari body) dengan password lama (dari DB)
+    // Ingat: password di DB itu ter-hashing, jadi harus pakai bcrypt.compare
+    const isSame = await bcrypt.compare(password, user.password_hash);
+
+    // 3. ✅ Jika sama, kirim status 400 agar frontend memunculkan Pop-up Merah
+    if (isSame) {
+      return res.status(400).json({ 
+        message: "Password baru tidak boleh sama dengan password lama!" 
+      });
+    }
+
+    // 4. Jika berbeda, proses update seperti biasa
     await usersRepo.updateUser(id, { password });
     res.json({ message: "Password berhasil di-reset oleh Admin" });
+
   } catch (err) {
-    console.error("Error Reset Password:", err); // Agar terlihat di terminal jika error
+    console.error("Error Reset Password:", err);
     next(err);
   }
 };

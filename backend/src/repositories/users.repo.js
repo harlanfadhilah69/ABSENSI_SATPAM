@@ -73,3 +73,5 @@ exports.setActive = async (id, isActive) => {
   await pool.query("UPDATE users SET is_active = ? WHERE id = ?", [isActive ? 1 : 0, id]);
   return exports.findById(id);
 };
+
+exports.getUserById = exports.findById;

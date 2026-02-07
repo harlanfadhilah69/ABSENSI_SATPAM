@@ -102,3 +102,19 @@ exports.qrLink = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getPostById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    // Panggil repository untuk ambil 1 data saja
+    const post = await postsRepo.findById(id); 
+
+    if (!post) {
+      return res.status(404).json({ message: "Pos tidak ditemukan" });
+    }
+
+    res.json({ data: post }); // ✅ Kirim data ke frontend
+  } catch (err) {
+    next(err);
+  }
+};

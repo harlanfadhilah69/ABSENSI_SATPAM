@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuthContext } from "../../context/AuthContext";
-import { useState } from "react"; // Tambahkan useState
-// ✅ Import logo untuk bagian kiri navbar
+import { useState, useEffect } from "react"; 
+// ✅ Import logo RS
 import logoImg from "../../assets/logo_patroli.png"; 
 
 export default function AdminNavbar() {
@@ -9,8 +9,16 @@ export default function AdminNavbar() {
   const navigate = useNavigate();
   const location = useLocation(); 
 
-  // State untuk Modal Logout Kustom
+  // State untuk deteksi mobile & menu lipat
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 850);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 850);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const confirmLogout = () => {
     setShowLogoutModal(false);
@@ -23,63 +31,92 @@ export default function AdminNavbar() {
   return (
     <>
       <nav style={styles.navbar}>
-        {/* --- KIRI: LOGO & MENU --- */}
-        <div style={styles.leftSection}>
-          <div style={styles.logoContainer} onClick={() => navigate("/admin/dashboard")}>
-            <div style={styles.logoCircle}>
+        <div style={styles.navContainer}>
+          {/* --- KIRI: LOGO --- */}
+          <div style={styles.logoSection} onClick={() => navigate("/admin/dashboard")}>
+            <div style={styles.logoWrapper}>
               <img src={logoImg} alt="Logo RS" style={styles.logoImage} />
             </div>
-            <span style={styles.brandName}>RS Islam Fatimah Cilacap</span>
+            {!isMobile && <span style={styles.brandName}>RS Islam Fatimah Cilacap</span>}
+            {isMobile && <span style={styles.brandNameSmall}>RSIFC Admin</span>}
           </div>
 
-          <div style={styles.menuLinks}>
-            <Link to="/admin/dashboard" style={isActive("/admin/dashboard") ? styles.activeNavLink : styles.navLink}>
-              Dashboard
-            </Link>
-            <Link to="/admin/reports" style={isActive("/admin/reports") ? styles.activeNavLink : styles.navLink}>
-              Reports
-            </Link>
-            <Link to="/admin/users" style={isActive("/admin/users") ? styles.activeNavLink : styles.navLink}>
-              Kelola User
-            </Link>
-          </div>
-        </div>
-
-        {/* --- KANAN: USER PROFILE & LOGOUT --- */}
-        <div style={styles.rightSection}>
-          <div style={styles.userInfo}>
-            <div style={styles.adminIcon}>👤</div>
-            <div style={styles.userDetail}>
-              <span style={styles.userName}>{user?.name || "Administrator"}</span>
-              <span style={styles.userRole}>Super Admin</span>
+          {/* --- TENGAH: MENU (DESKTOP ONLY) --- */}
+          {!isMobile && (
+            <div style={styles.menuLinks}>
+              <Link to="/admin/dashboard" style={isActive("/admin/dashboard") ? styles.activeNavLink : styles.navLink}>
+                Dashboard
+              </Link>
+              <Link to="/admin/reports" style={isActive("/admin/reports") ? styles.activeNavLink : styles.navLink}>
+                Reports
+              </Link>
+              <Link to="/admin/users" style={isActive("/admin/users") ? styles.activeNavLink : styles.navLink}>
+                Kelola User
+              </Link>
             </div>
-          </div>
+          )}
 
-          {/* Trigger Modal Kustom */}
-          <button onClick={() => setShowLogoutModal(true)} style={styles.logoutBtn}>
-            Logout
-          </button>
+          {/* --- KANAN: USER & BURGER --- */}
+          <div style={styles.rightSection}>
+            {!isMobile && (
+              <div style={styles.userInfo}>
+                <div style={styles.userDetail}>
+                  <span style={styles.userName}>{user?.name || "Admin"}</span>
+                  <span style={styles.userRole}>Super Admin</span>
+                </div>
+                <div style={styles.adminIcon}>👤</div>
+              </div>
+            )}
+
+            {/* Tombol Logout (Desktop) */}
+            {!isMobile && (
+              <button onClick={() => setShowLogoutModal(true)} style={styles.logoutBtn}>
+                Logout
+              </button>
+            )}
+
+            {/* Tombol Burger (Mobile) */}
+            {isMobile && (
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={styles.burgerBtn}>
+                {isMenuOpen ? "✕" : "☰"}
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* --- MOBILE DROPDOWN MENU --- */}
+        {isMobile && isMenuOpen && (
+          <div style={styles.mobileDropdown}>
+            <Link to="/admin/dashboard" onClick={() => setIsMenuOpen(false)} style={isActive("/admin/dashboard") ? styles.mobileActiveLink : styles.mobileLink}>
+              🏠 Dashboard
+            </Link>
+            <Link to="/admin/reports" onClick={() => setIsMenuOpen(false)} style={isActive("/admin/reports") ? styles.mobileActiveLink : styles.mobileLink}>
+              📄 Reports
+            </Link>
+            <Link to="/admin/users" onClick={() => setIsMenuOpen(false)} style={isActive("/admin/users") ? styles.mobileActiveLink : styles.mobileLink}>
+              👥 Kelola User
+            </Link>
+            <div style={styles.mobileUserSection}>
+               <div style={{fontSize: '14px', fontWeight: '700'}}>{user?.name}</div>
+               <div style={{fontSize: '11px', color: '#94a3b8'}}>Administrator Sitem</div>
+            </div>
+            <button onClick={() => { setIsMenuOpen(false); setShowLogoutModal(true); }} style={styles.mobileLogoutBtn}>
+              Logout
+            </button>
+          </div>
+        )}
       </nav>
 
-      {/* --- KUSTOM MODAL LOGOUT (SENADA DENGAN UI LAIN) --- */}
+      {/* --- KUSTOM MODAL LOGOUT --- */}
       {showLogoutModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
-            <div style={styles.modalHeader}>
-              <div style={styles.modalIconBox}>⚠️</div>
-              <h3 style={styles.modalTitle}>Konfirmasi Keluar</h3>
-            </div>
-            <p style={styles.modalBody}>
-              Apakah Anda yakin ingin mengakhiri sesi dan keluar dari sistem <b>RS Islam Fatimah</b>?
-            </p>
+            <div style={styles.modalIconBox}>⚠️</div>
+            <h3 style={styles.modalTitle}>Konfirmasi Keluar</h3>
+            <p style={styles.modalBody}>Yakin ingin mengakhiri sesi manajemen <b>RS Islam Fatimah</b>?</p>
             <div style={styles.modalFooter}>
-              <button onClick={() => setShowLogoutModal(false)} style={styles.btnCancel}>
-                Batal
-              </button>
-              <button onClick={confirmLogout} style={styles.btnConfirm}>
-                Ya, Logout
-              </button>
+              <button onClick={() => setShowLogoutModal(false)} style={styles.btnCancel}>Batal</button>
+              <button onClick={confirmLogout} style={styles.btnConfirm}>Ya, Logout</button>
             </div>
           </div>
         </div>
@@ -91,121 +128,85 @@ export default function AdminNavbar() {
 // --- STYLES OBJECT ---
 const styles = {
   navbar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "0 40px",
-    height: "75px",
     backgroundColor: "#fff",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+    boxShadow: "0 2px 15px rgba(0,0,0,0.08)",
     position: "sticky",
     top: 0,
     zIndex: 1000,
     fontFamily: "'Inter', sans-serif",
   },
-  leftSection: { display: "flex", alignItems: "center", gap: "50px" },
-  logoContainer: { display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" },
-  logoCircle: {
-    width: "40px",
-    height: "40px",
-    backgroundColor: "#064e3b", 
-    borderRadius: "10px",
+  navContainer: {
     display: "flex",
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
-    boxShadow: "0 4px 8px rgba(6, 78, 59, 0.2)",
+    padding: "0 20px",
+    height: "70px",
+    maxWidth: "1200px",
+    margin: "0 auto"
   },
-  logoImage: { width: "70%", height: "70%", objectFit: "contain" },
-  brandName: { fontSize: "18px", fontWeight: "800", color: "#064e3b", letterSpacing: "-0.5px" },
-  menuLinks: { display: "flex", gap: "30px", height: "75px", alignItems: "center" },
-  navLink: { textDecoration: "none", color: "#64748b", fontSize: "15px", fontWeight: "600", transition: "color 0.2s" },
+  logoSection: { display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" },
+  logoWrapper: { width: "45px", height: "45px", display: "flex", justifyContent: "center", alignItems: "center" },
+  logoImage: { width: "100%", height: "100%", objectFit: "contain" },
+  brandName: { fontSize: "18px", fontWeight: "800", color: "#064e3b" },
+  brandNameSmall: { fontSize: "15px", fontWeight: "800", color: "#064e3b" },
+  
+  menuLinks: { display: "flex", gap: "25px", height: "70px", alignItems: "center" },
+  navLink: { textDecoration: "none", color: "#64748b", fontSize: "14px", fontWeight: "600", transition: "0.2s" },
   activeNavLink: {
     textDecoration: "none",
     color: "#064e3b",
-    fontSize: "15px",
+    fontSize: "14px",
     fontWeight: "700",
     borderBottom: "3px solid #b08d00",
     height: "100%",
     display: "flex",
     alignItems: "center",
   },
-  rightSection: { display: "flex", alignItems: "center", gap: "25px" },
-  userInfo: { display: "flex", alignItems: "center", gap: "12px", paddingRight: "20px", borderRight: "1px solid #e2e8f0" },
-  adminIcon: { fontSize: "18px", color: "#64748b" },
-  userDetail: { display: "flex", flexDirection: "column" },
-  userName: { fontSize: "14px", fontWeight: "700", color: "#1e293b", lineHeight: "1.2" },
-  userRole: { fontSize: "11px", color: "#94a3b8", fontWeight: "500" },
+
+  rightSection: { display: "flex", alignItems: "center", gap: "15px" },
+  userInfo: { display: "flex", alignItems: "center", gap: "10px", borderRight: "1px solid #f1f5f9", paddingRight: "15px" },
+  userDetail: { display: "flex", flexDirection: "column", textAlign: "right" },
+  userName: { fontSize: "13px", fontWeight: "700", color: "#1e293b" },
+  userRole: { fontSize: "10px", color: "#94a3b8" },
+  adminIcon: { fontSize: "20px" },
+  
   logoutBtn: {
-    padding: "10px 20px",
+    padding: "8px 18px",
     backgroundColor: "#fff",
     color: "#be123c",
     border: "1.5px solid #be123c",
-    borderRadius: "12px",
-    fontSize: "14px",
+    borderRadius: "8px",
+    fontSize: "13px",
     fontWeight: "700",
     cursor: "pointer",
-    transition: "all 0.2s",
   },
 
-  /* --- MODAL STYLES (SENADA DENGAN UI DASHBOARD) --- */
-  modalOverlay: {
-    position: "fixed",
-    top: 0,
+  // MOBILE STYLES
+  burgerBtn: { background: "none", border: "none", fontSize: "24px", color: "#064e3b", cursor: "pointer" },
+  mobileDropdown: {
+    position: "absolute",
+    top: "70px",
     left: 0,
-    width: "100vw",
-    height: "100vh",
-    backgroundColor: "rgba(15, 23, 42, 0.6)", // Overlay gelap elegan
-    backdropFilter: "blur(4px)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 2000,
-  },
-  modalContent: {
+    width: "100%",
     backgroundColor: "#fff",
-    width: "400px",
-    padding: "30px",
-    borderRadius: "24px",
-    boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)",
-    border: "1px solid #f1f5f9",
-    textAlign: "center",
-  },
-  modalHeader: { marginBottom: "20px" },
-  modalIconBox: {
-    width: "60px",
-    height: "60px",
-    backgroundColor: "#fef2f2",
-    color: "#be123c",
-    borderRadius: "50%",
+    boxShadow: "0 10px 15px rgba(0,0,0,0.1)",
     display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    fontSize: "24px",
-    margin: "0 auto 15px auto",
-    border: "1px solid #fee2e2",
+    flexDirection: "column",
+    padding: "15px 0",
+    borderTop: "1px solid #f1f5f9"
   },
-  modalTitle: { fontSize: "20px", fontWeight: "800", color: "#1e293b", margin: 0 },
-  modalBody: { fontSize: "15px", color: "#64748b", lineHeight: "1.6", marginBottom: "30px" },
-  modalFooter: { display: "flex", gap: "12px", justifyContent: "center" },
-  btnCancel: {
-    flex: 1,
-    padding: "12px",
-    borderRadius: "12px",
-    border: "1.5px solid #e2e8f0",
-    backgroundColor: "#fff",
-    color: "#64748b",
-    fontWeight: "700",
-    cursor: "pointer",
-  },
-  btnConfirm: {
-    flex: 1,
-    padding: "12px",
-    borderRadius: "12px",
-    border: "none",
-    backgroundColor: "#064e3b", // Hijau Tua senada RS
-    color: "#fff",
-    fontWeight: "700",
-    cursor: "pointer",
-    boxShadow: "0 4px 6px rgba(6, 78, 59, 0.2)",
-  },
+  mobileLink: { padding: "15px 25px", textDecoration: "none", color: "#1e293b", fontWeight: "600", fontSize: "14px" },
+  mobileActiveLink: { padding: "15px 25px", textDecoration: "none", color: "#064e3b", fontWeight: "800", background: "#f0fdf4", borderLeft: "4px solid #b08d00" },
+  mobileUserSection: { padding: "15px 25px", borderTop: "1px solid #f1f5f9", marginTop: "10px" },
+  mobileLogoutBtn: { margin: "10px 25px", padding: "12px", backgroundColor: "#be123c", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "700" },
+
+  // MODAL
+  modalOverlay: { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 2000 },
+  modalContent: { backgroundColor: "#fff", width: "90%", maxWidth: "380px", padding: "30px", borderRadius: "20px", textAlign: "center" },
+  modalIconBox: { width: "50px", height: "50px", backgroundColor: "#fef2f2", color: "#be123c", borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 15px auto", fontSize: "20px" },
+  modalTitle: { fontSize: "18px", fontWeight: "800", color: "#1e293b", margin: 0 },
+  modalBody: { fontSize: "14px", color: "#64748b", margin: "15px 0 25px 0" },
+  modalFooter: { display: "flex", gap: "10px" },
+  btnCancel: { flex: 1, padding: "10px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#fff", fontWeight: "600" },
+  btnConfirm: { flex: 1, padding: "10px", borderRadius: "8px", border: "none", background: "#064e3b", color: "#fff", fontWeight: "600" }
 };

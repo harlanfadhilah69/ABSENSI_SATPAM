@@ -1,11 +1,20 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react"; // Tambahkan useState
+import { useState, useEffect } from "react"; 
 // ✅ Import logo patroli
 import logoImg from "../../assets/logo_patroli.png";
 
 export default function SatpamNavbar() {
   const nav = useNavigate();
   
+  // State untuk deteksi mobile agar ukuran elemen menyesuaikan otomatis
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 600);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 600);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // State untuk Modal Logout Kustom
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -19,25 +28,25 @@ export default function SatpamNavbar() {
     <>
       <nav style={styles.navbar}>
         <div style={styles.container}>
-          {/* LOGO & JUDUL */}
+          {/* LOGO & JUDUL - Diperkecil untuk Mobile agar tidak meluber */}
           <div style={styles.brand} onClick={() => nav("/satpam")}>
-            <div style={styles.logoWrapper}>
+            <div style={{...styles.logoWrapper, width: isMobile ? "40px" : "60px", height: isMobile ? "40px" : "60px"}}>
               <img src={logoImg} alt="Logo" style={styles.logoImg} />
             </div>
             <div style={styles.textWrapper}>
-              <div style={styles.mainTitle}>Dashboard Satpam</div>
-              <div style={styles.subTitle}>RS Islam Fatimah</div>
+              <div style={{...styles.mainTitle, fontSize: isMobile ? "16px" : "22px"}}>Dashboard Satpam</div>
+              <div style={{...styles.subTitle, fontSize: isMobile ? "10px" : "13px"}}>RS Islam Fatimah</div>
             </div>
           </div>
 
-          {/* MENU KANAN */}
-          <div style={styles.menu}>
-            <button onClick={() => nav("/scan")} style={styles.btnScan}>
-              <span style={{ fontSize: '18px' }}>📲</span> Scan QR
+          {/* MENU KANAN - Menggunakan tombol yang lebih ramping di HP */}
+          <div style={{...styles.menu, gap: isMobile ? "8px" : "12px"}}>
+            <button onClick={() => nav("/scan")} style={{...styles.btnScan, padding: isMobile ? "8px 12px" : "10px 20px"}}>
+              <span style={{ fontSize: isMobile ? '14px' : '18px' }}>📲</span> {!isMobile ? "Scan QR" : "Scan QR"}
             </button>
 
-            <button onClick={() => setShowLogoutModal(true)} style={styles.btnLogout}>
-              <span style={{ fontSize: '18px' }}>⬅️</span> Keluar
+            <button onClick={() => setShowLogoutModal(true)} style={{...styles.btnLogout, padding: isMobile ? "8px 12px" : "10px 20px"}}>
+              <span style={{ fontSize: isMobile ? '14px' : '18px' }}>⬅️</span> {!isMobile ? "Keluar" : "Keluar"}
             </button>
           </div>
         </div>
@@ -52,7 +61,7 @@ export default function SatpamNavbar() {
               <h3 style={styles.modalTitle}>Konfirmasi Keluar</h3>
             </div>
             <p style={styles.modalBody}>
-              Apakah Anda yakin ingin keluar dari akun petugas keamanan <b>RS Islam Fatimah</b>?
+              Apakah Anda yakin ingin keluar dari akun petugas keamanan?
             </p>
             <div style={styles.modalFooter}>
               <button onClick={() => setShowLogoutModal(false)} style={styles.btnCancel}>
@@ -72,7 +81,7 @@ export default function SatpamNavbar() {
 const styles = {
   navbar: {
     backgroundColor: "#ffffff",
-    borderBottom: "4px solid #b08d00", // Aksen emas
+    borderBottom: "4px solid #b08d00", // Aksen emas tetap dipertahankan
     boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
     position: "sticky",
     top: 0,
@@ -83,52 +92,54 @@ const styles = {
   container: {
     maxWidth: "1200px",
     margin: "0 auto",
-    padding: "10px 20px",
+    padding: "10px 15px",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  brand: { display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" },
+  brand: { display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" },
+  
   logoWrapper: {
-    width: "45px",
-    height: "45px",
-    backgroundColor: "#064e3b", // Hijau Tua sesuai Brand
-    borderRadius: "12px",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+    backgroundColor: "transparent", 
   },
-  logoImg: { width: "75%", height: "75%", objectFit: "contain" },
+  
+  logoImg: { 
+    width: "100%", 
+    height: "100%", 
+    objectFit: "contain"
+  },
+  
   textWrapper: { display: "flex", flexDirection: "column" },
-  mainTitle: { fontSize: "16px", fontWeight: "800", color: "#064e3b", lineHeight: "1.2" },
-  subTitle: { fontSize: "11px", color: "#6b7280", fontWeight: "600" },
-  menu: { display: "flex", gap: "12px" },
+  mainTitle: { fontWeight: "800", color: "#064e3b", lineHeight: "1.1" },
+  subTitle: { color: "#6b7280", fontWeight: "600" },
+  menu: { display: "flex" },
+
   btnScan: {
     backgroundColor: "#064e3b", 
     color: "white",
     border: "none",
-    padding: "8px 20px",
     borderRadius: "10px",
     fontWeight: "700",
-    fontSize: "14px",
+    fontSize: "13px",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: "6px",
   },
   btnLogout: {
     backgroundColor: "#fff",
     color: "#be123c",
     border: "1.5px solid #fee2e2",
-    padding: "8px 20px",
     borderRadius: "10px",
     fontWeight: "700",
-    fontSize: "14px",
+    fontSize: "13px",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: "6px",
   },
 
   /* --- MODAL STYLES --- */
@@ -138,7 +149,7 @@ const styles = {
     left: 0,
     width: "100vw",
     height: "100vh",
-    backgroundColor: "rgba(15, 23, 42, 0.6)", // Overlay gelap elegan
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
     backdropFilter: "blur(4px)",
     display: "flex",
     justifyContent: "center",
@@ -147,47 +158,44 @@ const styles = {
   },
   modalContent: {
     backgroundColor: "#fff",
-    width: "90%",
-    maxWidth: "400px",
-    padding: "30px",
-    borderRadius: "24px",
+    width: "85%",
+    maxWidth: "380px",
+    padding: "25px",
+    borderRadius: "20px",
     boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)",
     textAlign: "center",
   },
   modalIconBox: {
-    width: "60px",
-    height: "60px",
+    width: "50px",
+    height: "50px",
     backgroundColor: "#fef2f2",
     color: "#be123c",
     borderRadius: "50%",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    fontSize: "24px",
+    fontSize: "20px",
     margin: "0 auto 15px auto",
-    border: "1px solid #fee2e2",
   },
-  modalTitle: { fontSize: "20px", fontWeight: "800", color: "#1e293b", margin: 0 },
-  modalBody: { fontSize: "14px", color: "#64748b", lineHeight: "1.6", marginBottom: "30px" },
-  modalFooter: { display: "flex", gap: "12px", justifyContent: "center" },
+  modalTitle: { fontSize: "18px", fontWeight: "800", color: "#1e293b", margin: 0 },
+  modalBody: { fontSize: "14px", color: "#64748b", lineHeight: "1.5", marginBottom: "25px" },
+  modalFooter: { display: "flex", gap: "10px", justifyContent: "center" },
   btnCancel: {
     flex: 1,
-    padding: "12px",
-    borderRadius: "12px",
+    padding: "10px",
+    borderRadius: "10px",
     border: "1.5px solid #e2e8f0",
     backgroundColor: "#fff",
     color: "#64748b",
     fontWeight: "700",
-    cursor: "pointer",
   },
   btnConfirm: {
     flex: 1,
-    padding: "12px",
-    borderRadius: "12px",
+    padding: "10px",
+    borderRadius: "10px",
     border: "none",
-    backgroundColor: "#064e3b", // Hijau Tua senada Brand
+    backgroundColor: "#064e3b",
     color: "#fff",
     fontWeight: "700",
-    cursor: "pointer",
   },
 };

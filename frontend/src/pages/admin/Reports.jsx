@@ -13,7 +13,20 @@ export default function Reports() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // --- STATE PAGINATION ---
+  // --- STATE UNTUK MODAL KONFIRMASI HAPUS ---
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
+
+  // --- STATE UNTUK NOTIFIKASI (TOAST) ---
+  const [notif, setNotif] = useState({ show: false, status: "", message: "" });
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4;
 
@@ -26,6 +39,11 @@ export default function Reports() {
     if (!photoPath) return "";
     const clean = String(photoPath).startsWith("/") ? String(photoPath).slice(1) : String(photoPath);
     return `${baseApi}/${clean}`;
+  };
+
+  const showNotif = (status, msg) => {
+    setNotif({ show: true, status, message: msg });
+    setTimeout(() => setNotif({ show: false, status: "", message: "" }), 3000);
   };
 
   const formatDateTime = (value) => {
@@ -45,15 +63,10 @@ export default function Reports() {
       setRows(res.data?.data || []);
       setCurrentPage(1);
     } catch (e) {
-      setMsg("Gagal ambil laporan");
+      showNotif("error", "Gagal mengambil laporan");
     } finally {
       setLoading(false);
     }
-  };
-
-  const resetFilter = () => {
-    setDateFrom(""); setDateTo(""); setSatpam(""); setPos("");
-    fetchData();
   };
 
   const exportPDF = (isCurrentPageOnly = false) => {
@@ -73,12 +86,22 @@ export default function Reports() {
     doc.save(`Laporan_Patroli.pdf`);
   };
 
-  const handleDelete = async (row) => {
-    if (!window.confirm("Hapus histori ini?")) return;
+  // --- LOGIKA HAPUS DIPERBARUI ---
+  const triggerDelete = (row) => {
+    setSelectedRow(row);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
     try {
-      await api.delete(`/admin/reports/${row.id}`);
+      await api.delete(`/admin/reports/${selectedRow.id}`);
+      showNotif("success", "Histori patroli berhasil dihapus");
+      setShowDeleteModal(false);
       fetchData();
-    } catch (e) { alert("Gagal menghapus"); }
+    } catch (e) {
+      showNotif("error", "Gagal menghapus data");
+      setShowDeleteModal(false);
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -90,153 +113,169 @@ export default function Reports() {
 
   return (
     <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
-          <AdminNavbar />
+      <AdminNavbar />
       
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: isMobile ? "20px 15px" : "40px 20px" }}>
         {/* HEADER */}
-        <div style={{ marginBottom: 30, borderLeft: "8px solid #b08d00", paddingLeft: 20 }}>
-          <h1 style={{ fontSize: 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>Jadwal / Laporan Patroli</h1>
-          <p style={{ color: "#64748b", margin: "5px 0 0 0", fontSize: 14 }}>Sistem Pemantauan Keamanan RS Islam Fatimah</p>
+        <div style={{ ...styles.headerSection, borderLeft: isMobile ? "none" : "8px solid #b08d00" }}>
+          <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>Laporan Patroli</h1>
+          <p style={{ color: "#64748b", fontSize: 14 }}>Monitoring Keamanan RS Islam Fatimah</p>
         </div>
 
         {/* FILTER CARD */}
-        <div style={filterCard}>
-          <div style={gridFilter}>
-            <div style={inputGroup}>
-              <label style={labelStyle}>DARI TANGGAL</label>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={inputStyle} />
-            </div>
-            <div style={inputGroup}>
-              <label style={labelStyle}>SAMPAI TANGGAL</label>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={inputStyle} />
-            </div>
-            <div style={inputGroup}>
-              <label style={labelStyle}>NAMA SATPAM</label>
-              <input value={satpam} onChange={(e) => setSatpam(e.target.value)} placeholder="Cari nama..." style={inputStyle} />
-            </div>
-            <div style={inputGroup}>
-              <label style={labelStyle}>LOKASI POS</label>
-              <input value={pos} onChange={(e) => setPos(e.target.value)} placeholder="Cari pos..." style={inputStyle} />
-            </div>
+        <div style={styles.cardContainer}>
+          <div style={styles.gridFilter}>
+            <div style={styles.inputGroup}><label style={styles.labelStyle}>DARI TANGGAL</label><input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={styles.inputStyle} /></div>
+            <div style={styles.inputGroup}><label style={styles.labelStyle}>SAMPAI TANGGAL</label><input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={styles.inputStyle} /></div>
+            <div style={styles.inputGroup}><label style={styles.labelStyle}>NAMA SATPAM</label><input value={satpam} onChange={(e) => setSatpam(e.target.value)} placeholder="Cari..." style={styles.inputStyle} /></div>
+            <div style={styles.inputGroup}><label style={styles.labelStyle}>LOKASI POS</label><input value={pos} onChange={(e) => setPos(e.target.value)} placeholder="Cari..." style={styles.inputStyle} /></div>
           </div>
           
-          <div style={{ marginTop: 25, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ display: "flex", gap: 12 }}>
-              <button onClick={fetchData} style={btnFilter}>FILTER</button>
-              <button onClick={resetFilter} style={btnReset}>RESET</button>
+          <div style={{ ...styles.filterActions, flexDirection: isMobile ? "column" : "row" }}>
+            <div style={{ display: "flex", gap: 10, width: isMobile ? '100%' : 'auto' }}>
+              <button onClick={fetchData} style={{ ...styles.btnFilter, flex: isMobile ? 1 : 'none' }}>FILTER</button>
+              <button onClick={() => { setDateFrom(""); setDateTo(""); setSatpam(""); setPos(""); fetchData(); }} style={{ ...styles.btnReset, flex: isMobile ? 1 : 'none' }}>RESET</button>
             </div>
-            <div style={{ display: "flex", gap: 12 }}>
-              <button onClick={() => exportPDF(true)} style={btnExportPage}>📄 CETAK PDF (HALAMAN INI)</button>
-              <button onClick={() => exportPDF(false)} style={btnExportAll}>📄 CETAK PDF (SEMUA)</button>
+            <div style={{ display: "flex", gap: 10, width: isMobile ? '100%' : 'auto' }}>
+              <button onClick={() => exportPDF(true)} style={{ ...styles.btnExport, flex: isMobile ? 1 : 'none' }}>DOWNLOAD THIS PAGE PDF</button>
+              <button onClick={() => exportPDF(false)} style={{ ...styles.btnExport, flex: isMobile ? 1 : 'none' }}>DOWNLOAD ALL PAGE PDF</button>
             </div>
           </div>
         </div>
 
-        {/* TABLE SECTION */}
-        <div style={tableContainer}>
-          <table width="100%" style={{ borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={tableHeader}>
-                <th style={thStyle}>WAKTU</th>
-                <th style={thStyle}>SATPAM</th>
-                <th style={thStyle}>POS</th>
-                <th style={thStyle}>CATATAN</th>
-                <th style={thStyle}>GPS</th>
-                <th style={thStyle}>FOTO</th>
-                <th style={thStyle}>AKSI</th>
-              </tr>
-            </thead>
-            <tbody>
+        {/* LOGS SECTION */}
+        <div style={styles.cardContainer}>
+          {loading ? (
+            <div style={{ padding: 50, textAlign: 'center', color: '#94a3b8' }}>Memuat data...</div>
+          ) : currentRows.length === 0 ? (
+            <div style={{ padding: 50, textAlign: 'center', color: '#94a3b8' }}>Tidak ada laporan.</div>
+          ) : isMobile ? (
+            <div style={{ padding: '15px' }}>
               {currentRows.map((r) => (
-                <tr key={r.id} style={trStyle}>
-                  <td style={tdStyle}>{formatDateTime(r.captured_at_server || r.created_at)}</td>
-                  <td style={{ ...tdStyle, fontWeight: "700" }}>{r.satpam_name || r.username}</td>
-                  <td style={tdStyle}>{r.post_name || "-"}</td>
-                  <td style={{ ...tdStyle, fontStyle: "italic", color: "#64748b" }}>"{r.note || "-"}"</td>
-                  <td style={tdStyle}>
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>{r.lat ? `${r.lat}, ${r.lng}` : "-"}</div>
-                    {r.lat && <a href={`http://googleusercontent.com/maps.google.com/5{r.lat},${r.lng}`} target="_blank" style={linkMaps}>📍 Lihat Maps</a>}
-                  </td>
-                  <td style={tdStyle}>
-                    {r.photo_path ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <img src={fotoUrl(r.photo_path)} style={imgThumb} alt="foto" />
-                        <a href={fotoUrl(r.photo_path)} target="_blank" style={linkAction}>Lihat Foto</a>
-                      </div>
-                    ) : "-"}
-                  </td>
-                  <td style={tdStyle}>
-                    <button onClick={() => handleDelete(r)} style={btnHapus}>HAPUS</button>
-                  </td>
-                </tr>
+                <div key={r.id} style={styles.mobileCard}>
+                  <div style={styles.mobileRow}><span style={styles.mobileLabel}>SATPAM</span><span style={{ fontWeight: '800' }}>{r.satpam_name || r.username}</span></div>
+                  <div style={styles.mobileRow}><span style={styles.mobileLabel}>WAKTU</span><span>{formatDateTime(r.captured_at_server || r.created_at)}</span></div>
+                  <div style={styles.mobileRow}><span style={styles.mobileLabel}>POS</span><span style={{ color: '#064e3b', fontWeight: '800' }}>{r.post_name}</span></div>
+                  <div style={styles.mobileRow}><span style={styles.mobileLabel}>CATATAN</span><span style={{ fontStyle: 'italic' }}>{r.note || "Aman"}</span></div>
+                  <div style={styles.mobileActions}>
+                    {r.lat && <button onClick={() => window.open(`http://maps.google.com/?q=${r.lat},${r.lng}`)} style={styles.btnActionSmall}>📍 Peta</button>}
+                    {r.photo_path && <button onClick={() => window.open(fotoUrl(r.photo_path))} style={styles.btnActionSmall}>📷 Foto</button>}
+                    <button onClick={() => triggerDelete(r)} style={styles.btnActionDelete}>🗑 Hapus</button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table width="100%" style={{ borderCollapse: "collapse" }}>
+                <thead><tr style={styles.tableHeader}>
+                  <th style={styles.thStyle}>WAKTU</th><th style={styles.thStyle}>SATPAM</th><th style={styles.thStyle}>POS</th>
+                  <th style={styles.thStyle}>CATATAN</th><th style={styles.thStyle}>GPS</th><th style={styles.thStyle}>FOTO</th><th style={styles.thStyle}>AKSI</th>
+                </tr></thead>
+                <tbody>{currentRows.map((r) => (
+                  <tr key={r.id} style={styles.trStyle}>
+                    <td style={styles.tdStyle}>{formatDateTime(r.captured_at_server || r.created_at)}</td>
+                    <td style={{ ...styles.tdStyle, fontWeight: "700" }}>{r.satpam_name || r.username}</td>
+                    <td style={styles.tdStyle}>{r.post_name || "-"}</td>
+                    <td style={{ ...styles.tdStyle, color: "#64748b" }}>"{r.note || "-"}"</td>
+                    <td style={styles.tdStyle}>{r.lat && <a href={`http://maps.google.com/?q=${r.lat},${r.lng}`} target="_blank" style={styles.linkMaps}>📍 Maps</a>}</td>
+                    <td style={styles.tdStyle}>{r.photo_path && <img src={fotoUrl(r.photo_path)} style={styles.imgThumb} onClick={() => window.open(fotoUrl(r.photo_path))} />}</td>
+                    <td style={styles.tdStyle}><button onClick={() => triggerDelete(r)} style={styles.btnHapus}>HAPUS</button></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
 
           {/* PAGINATION */}
-          <div style={paginationArea}>
-            <div style={{ fontSize: 13, color: "#64748b" }}>
-              Menampilkan <b>{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, rows.length)}</b> dari <b>{rows.length}</b> laporan patroli
+          {rows.length > 0 && (
+            <div style={styles.paginationArea}>
+              <div style={{ fontSize: 13, color: "#64748b" }}>Menampilkan <b>{indexOfFirstItem + 1}</b>-<b>{Math.min(indexOfLastItem, rows.length)}</b> dari {rows.length}</div>
+              <div style={{ display: "flex", gap: 5 }}>
+                <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} style={styles.btnNav}>‹</button>
+                {Array.from({ length: totalPages }, (_, i) => (<button key={i+1} onClick={() => setCurrentPage(i+1)} style={currentPage === i+1 ? styles.btnPageActive : styles.btnPage}>{i+1}</button>))}
+                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} style={styles.btnNav}>›</button>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} style={btnNav}>PREV</button>
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button key={i+1} onClick={() => setCurrentPage(i+1)} style={currentPage === i+1 ? btnPageActive : btnPage}>
-                  {i+1}
-                </button>
-              ))}
-              <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} style={btnNav}>NEXT</button>
-            </div>
-          </div>
+          )}
         </div>
-
-        {/* INFO BOX */}
-        <div style={infoBox}>
-          <div style={infoIcon}>?</div>
-          <div>
-            <div style={{ fontWeight: "800", fontSize: 12, marginBottom: 5 }}>CATATAN TEKNIS:</div>
-            <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
-              Jika koordinat GPS menampilkan "-", mohon pastikan perangkat mobile petugas telah mengaktifkan layanan lokasi (GPS) dan memberikan izin akses lokasi untuk aplikasi.
-            </div>
-          </div>
-        </div>
-
-        <footer style={footerStyle}>
-          © 2026 <b>RS ISLAM FATIMAH</b> — UNIT KEAMANAN & KETERTIBAN
-        </footer>
       </div>
+
+      {/* --- MODAL KONFIRMASI HAPUS KUSTOM --- */}
+      {showDeleteModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <div style={styles.modalIconBox}>🗑️</div>
+            <h3 style={styles.modalTitle}>Hapus Histori?</h3>
+            <p style={styles.modalBody}>
+              Apakah Anda yakin ingin menghapus histori patroli di <b>"{selectedRow?.post_name}"</b> oleh <b>{selectedRow?.satpam_name || selectedRow?.username}</b>?
+            </p>
+            <div style={styles.modalFooter}>
+              <button onClick={() => setShowDeleteModal(false)} style={styles.btnCancel}>Batal</button>
+              <button onClick={handleConfirmDelete} style={styles.btnConfirmRed}>Ya, Hapus</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- FLOATING NOTIFICATION (TOAST) --- */}
+      {notif.show && (
+        <div style={{
+          ...styles.notifToast, 
+          backgroundColor: notif.status === "success" ? "#064e3b" : "#be123c"
+        }}>
+          {notif.status === "success" ? "✅" : "❌"} {notif.message}
+        </div>
+      )}
+
+      <footer style={styles.footerStyle}>© 2026 <b>RS ISLAM FATIMAH</b> — SECURITY MONITORING</footer>
     </div>
   );
 }
 
-// --- STYLES ---
-const filterCard = { backgroundColor: "#fff", borderRadius: 15, padding: "25px 30px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", borderTop: "5px solid #b08d00", marginBottom: 30 };
-const gridFilter = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20 };
-const inputGroup = { display: "flex", flexDirection: "column", gap: 8 };
-const labelStyle = { fontSize: 11, fontWeight: "800", color: "#64748b" };
-const inputStyle = { padding: "12px 15px", borderRadius: 10, border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", fontSize: 14, outline: "none" };
+const styles = {
+  headerSection: { marginBottom: 30, paddingLeft: 20 },
+  cardContainer: { backgroundColor: "#fff", borderRadius: 15, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", borderTop: "5px solid #b08d00", marginBottom: 30, overflow: "hidden" },
+  gridFilter: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 20, padding: 25 },
+  inputGroup: { display: "flex", flexDirection: "column", gap: 8 },
+  labelStyle: { fontSize: 11, fontWeight: "800", color: "#64748b" },
+  inputStyle: { padding: "12px", borderRadius: 10, border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", fontSize: 14, outline: "none" },
+  filterActions: { padding: "0 25px 25px", display: "flex", justifyContent: "space-between", gap: 15 },
+  btnFilter: { backgroundColor: "#064e3b", color: "#fff", padding: "12px 25px", borderRadius: 8, border: "none", fontWeight: "800", cursor: "pointer" },
+  btnReset: { backgroundColor: "#fff", color: "#64748b", padding: "12px 25px", borderRadius: 8, border: "1px solid #e2e8f0", fontWeight: "800", cursor: "pointer" },
+  btnExport: { backgroundColor: "#064e3b", color: "#fff", padding: "12px 15px", borderRadius: 8, border: "none", fontWeight: "700", cursor: "pointer", fontSize: 12 },
+  
+  tableHeader: { backgroundColor: "#064e3b" },
+  thStyle: { padding: "18px 20px", color: "#fff", fontSize: 11, fontWeight: "700", textAlign: "left", textTransform: "uppercase" },
+  tdStyle: { padding: "15px 20px", fontSize: 14, color: "#1e293b", borderBottom: "1px solid #f1f5f9" },
+  trStyle: { transition: 'background 0.2s' },
+  imgThumb: { width: 35, height: 35, borderRadius: 8, objectFit: "cover", cursor: 'pointer' },
+  linkMaps: { color: "#b08d00", fontSize: 12, fontWeight: "700", textDecoration: "none" },
+  btnHapus: { backgroundColor: "#fff", color: "#be123c", border: "1.5px solid #ffe4e6", padding: "6px 12px", borderRadius: 6, fontSize: 11, fontWeight: "800", cursor: "pointer" },
 
-const btnFilter = { backgroundColor: "#064e3b", color: "#fff", padding: "12px 30px", borderRadius: 8, border: "none", fontWeight: "800", cursor: "pointer" };
-const btnReset = { backgroundColor: "#fff", color: "#64748b", padding: "12px 25px", borderRadius: 8, border: "1px solid #e2e8f0", fontWeight: "800", cursor: "pointer" };
-const btnExportPage = { backgroundColor: "#064e3b", color: "#fff", padding: "12px 20px", borderRadius: 8, border: "none", fontWeight: "700", cursor: "pointer", fontSize: 13 };
-const btnExportAll = { backgroundColor: "#064e3b", color: "#fff", padding: "12px 20px", borderRadius: 8, border: "none", fontWeight: "700", cursor: "pointer", fontSize: 13 };
+  mobileCard: { padding: '20px', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '10px' },
+  mobileRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' },
+  mobileLabel: { fontSize: '10px', fontWeight: '800', color: '#94a3b8' },
+  mobileActions: { display: 'flex', gap: '10px', marginTop: '10px' },
+  btnActionSmall: { flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '11px', fontWeight: '800' },
+  btnActionDelete: { flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #ffe4e6', background: '#fef2f2', color: '#be123c', fontSize: '11px', fontWeight: '800' },
 
-const tableContainer = { backgroundColor: "#fff", borderRadius: 15, overflow: "hidden", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", border: "1px solid #f1f5f9" };
-const tableHeader = { backgroundColor: "#064e3b" };
-const thStyle = { padding: "18px 20px", color: "#fff", fontSize: 11, fontWeight: "700", textAlign: "left", textTransform: "uppercase" };
-const trStyle = { borderBottom: "1px solid #f1f5f9" };
-const tdStyle = { padding: "18px 20px", fontSize: 14, color: "#1e293b" };
+  paginationArea: { padding: "20px 25px", display: "flex", justifyContent: "space-between", alignItems: "center" },
+  btnNav: { border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", borderRadius: 6, padding: "5px 10px", cursor: "pointer" },
+  btnPage: { border: "1px solid #e2e8f0", background: "transparent", minWidth: 30, height: 30, borderRadius: 6, cursor: "pointer", fontSize: 12 },
+  btnPageActive: { border: "none", background: "#064e3b", color: "#fff", minWidth: 30, height: 30, borderRadius: 6, cursor: "pointer", fontSize: 12 },
+  footerStyle: { textAlign: "center", marginTop: 60, paddingBottom: 40, borderTop: "1px solid #e2e8f0", paddingTop: 30, color: "#94a3b8", fontSize: 11, letterSpacing: 1 },
 
-const imgThumb = { width: 35, height: 35, borderRadius: 8, objectFit: "cover", border: "1px solid #e2e8f0" };
-const linkAction = { color: "#b08d00", fontSize: 12, fontWeight: "700", textDecoration: "none" };
-const linkMaps = { ...linkAction, display: "block", marginTop: 4 };
-const btnHapus = { backgroundColor: "#fff", color: "#be123c", border: "1.5px solid #ffe4e6", padding: "6px 12px", borderRadius: 6, fontSize: 11, fontWeight: "800", cursor: "pointer" };
+  // --- MODAL STYLES ---
+  modalOverlay: { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 2000 },
+  modalContent: { backgroundColor: "#fff", width: "90%", maxWidth: "400px", padding: "30px", borderRadius: "24px", textAlign: "center", boxShadow: "0 20px 25px rgba(0,0,0,0.1)" },
+  modalIconBox: { width: "60px", height: "60px", backgroundColor: "#fef2f2", color: "#be123c", borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 15px", fontSize: "24px" },
+  modalTitle: { fontSize: "20px", fontWeight: "800", color: "#1e293b" },
+  modalBody: { fontSize: "14px", color: "#64748b", margin: "10px 0 25px", lineHeight: '1.5' },
+  modalFooter: { display: "flex", gap: "10px" },
+  btnCancel: { flex: 1, padding: "12px", borderRadius: "12px", border: "1.5px solid #e2e8f0", backgroundColor: "#fff", color: "#64748b", fontWeight: "700", cursor: 'pointer' },
+  btnConfirmRed: { flex: 1, padding: "12px", borderRadius: "12px", border: "none", backgroundColor: "#be123c", color: "#fff", fontWeight: "700", cursor: 'pointer' },
 
-const paginationArea = { padding: "20px 25px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9" };
-const btnNav = { padding: "8px 15px", border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", borderRadius: 6, fontWeight: "700", fontSize: 11, cursor: "pointer" };
-const btnPage = { ...btnNav, minWidth: 35 };
-const btnPageActive = { ...btnPage, backgroundColor: "#064e3b", color: "#fff", borderColor: "#064e3b" };
-
-const infoBox = { marginTop: 30, backgroundColor: "#f0fdfa", border: "1.5px solid #ccfbf1", borderRadius: 12, padding: 20, display: "flex", gap: 15, alignItems: "flex-start" };
-const infoIcon = { backgroundColor: "#b08d00", color: "#fff", width: 22, height: 22, borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", fontWeight: "900", fontSize: 12, flexShrink: 0 };
-const footerStyle = { textAlign: "center", marginTop: 60, paddingBottom: 40, borderTop: "1.5px solid #e2e8f0", paddingTop: 30, color: "#94a3b8", fontSize: 12, letterSpacing: 1 };
+  // --- TOAST STYLES ---
+  notifToast: { position: "fixed", top: "20px", right: "20px", color: "#fff", padding: "15px 25px", borderRadius: "12px", fontWeight: "700", boxShadow: "0 10px 15px rgba(0,0,0,0.2)", zIndex: 3000 }
+};

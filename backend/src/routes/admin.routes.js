@@ -22,6 +22,7 @@ router.post("/posts", ...adminOnly, postsController.create);
 router.put("/posts/:id", ...adminOnly, postsController.update);
 router.delete("/posts/:id", ...adminOnly, postsController.remove);
 router.get("/posts/:id/qr", ...adminOnly, postsController.qrLink);
+router.get("/posts/:id", postsController.getPostById);
 
 // ======================
 // REPORTS (admin)

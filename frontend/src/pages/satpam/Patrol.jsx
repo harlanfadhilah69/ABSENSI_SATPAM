@@ -43,6 +43,15 @@ export default function Patrol() {
   const [photoBlob, setPhotoBlob] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
 
+  // ✅ LOGIKA DETEKSI LAYAR
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const canSubmit = useMemo(() => {
     return !!finalPostId && !!photoBlob && gps.lat && gps.lng;
   }, [finalPostId, photoBlob, gps]);
@@ -82,7 +91,7 @@ export default function Patrol() {
   }, []);
 
   const capturePhoto = (e) => {
-    e.preventDefault(); // Mencegah form submission tidak sengaja
+    e.preventDefault();
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
@@ -118,11 +127,13 @@ export default function Patrol() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.wrapper}>
+      <div style={{...styles.wrapper, maxWidth: isMobile ? '100%' : '800px'}}>
         {/* HEADER */}
         <div style={styles.header}>
           <div style={styles.headerLeft}>
-            <div style={styles.logoBox}><img src={logoImg} style={styles.logo} alt="logo" /></div>
+            <div style={styles.logoWrapper}>
+               <img src={logoImg} style={styles.logo} alt="logo" />
+            </div>
             <div>
               <div style={styles.title}>RS Islam Fatimah</div>
               <div style={styles.subtitle}>Sistem Patroli Keamanan</div>
@@ -140,7 +151,7 @@ export default function Patrol() {
           <div style={styles.infoGrid}>
             <div>
               <div style={styles.infoLabel}>NAMA POS</div>
-              <div style={styles.infoValue}>{postInfo?.post_name || "Lobby IGD"} <span style={styles.idSub}>(ID: {urlPostId || '1'})</span></div>
+              <div style={styles.infoValue}>{postInfo?.post_name || "Lobby IGD"}</div>
             </div>
             <div>
               <div style={styles.infoLabel}>LOKASI</div>
@@ -153,11 +164,11 @@ export default function Patrol() {
           </div>
         </div>
 
-        {/* GPS LOKASI */}
+        {/* ✅ GPS LOKASI DIKEMBALIKAN */}
         <div style={styles.card}>
           <div style={styles.cardHeaderFlex}>
-            <span><span style={styles.headerIcon}>📍</span> GPS Lokasi <span style={styles.badgeGps}>LOKASI TERDETEKSI</span></span>
-            <button onClick={() => window.open(`https://www.google.com/maps?q=${gps.lat},${gps.lng}`)} style={styles.btnMaps}>🗏 Buka di Maps</button>
+            <span><span style={styles.headerIcon}>📍</span> GPS Lokasi <span style={styles.badgeGps}>TERDETEKSI</span></span>
+            <button onClick={() => window.open(`https://www.google.com/maps?q=${gps.lat},${gps.lng}`)} style={styles.btnMaps}>Buka di Maps</button>
           </div>
           <div style={styles.mapContainer}>
             {gps.lat && (
@@ -168,36 +179,48 @@ export default function Patrol() {
             )}
           </div>
           <div style={styles.mapFooter}>
-            Lat: {gps.lat?.toFixed(7) || '-'}   Lng: {gps.lng?.toFixed(7) || '-'}   Akurasi: {gps.accuracy ? gps.accuracy.toFixed(1) : '-'}m
+            Lat: {gps.lat?.toFixed(7) || '-'}   Lng: {gps.lng?.toFixed(7) || '-'}   Akurasi: {gps.accuracy ? gps.accuracy.toFixed(1) : '-'}m
           </div>
         </div>
 
-        {/* FOTO SELFIE */}
+        {/* FOTO SELFIE SECTION */}
         <div style={styles.card}>
           <div style={styles.cardHeaderFlex}>
             <span><span style={styles.headerIcon}>📷</span> Foto Selfie (Kamera)</span>
-            <span style={styles.camReady}>🌐 Kamera siap</span>
+            <span style={styles.camReady}>📶 Kamera siap</span>
           </div>
-          <div style={styles.cameraGrid}>
-            <div style={styles.camCol}>
+          
+          <div style={isMobile ? styles.camVerticalLayout : styles.camHorizontalLayout}>
+            <div style={isMobile ? styles.camSectionMobile : styles.camSectionWeb}>
               <div style={styles.subLabel}>PREVIEW KAMERA</div>
-              <div style={styles.videoBox}>
+              <div style={isMobile ? styles.videoBoxMobile : styles.videoBoxWeb}>
                 <video ref={videoRef} autoPlay playsInline muted style={styles.video} />
-                {/* TOMBOL DIPERBAIKI: Z-INDEX DITAMBAH */}
-                <button type="button" onClick={capturePhoto} style={styles.btnCapture}>
+              </div>
+              {!isMobile && (
+                <button type="button" onClick={capturePhoto} style={styles.btnCaptureWeb}>
                   📸 Ambil Foto
                 </button>
-              </div>
+              )}
             </div>
-            <div style={styles.camCol}>
+
+            {isMobile && (
+              <button type="button" onClick={capturePhoto} style={styles.btnCaptureMobile}>
+                📸 Ambil Foto
+              </button>
+            )}
+
+            <div style={isMobile ? styles.camSectionMobile : styles.camSectionWeb}>
               <div style={styles.subLabel}>HASIL FOTO</div>
-              <div style={styles.previewBox}>
+              <div style={isMobile ? styles.previewBoxMobile : styles.previewBoxWeb}>
                 {photoPreview ? (
                   <img src={photoPreview} style={styles.previewImg} alt="selfie" />
                 ) : (
                   <div style={styles.placeholderBox}>
                     <span style={{fontSize: '32px', color: '#e2e8f0'}}>📷</span>
-                    <div style={{fontSize: '11px', color: '#94a3b8', marginTop: '10px', textAlign: 'center'}}>Belum ada foto</div>
+                    <div style={{fontSize: '11px', color: '#94a3b8', marginTop: '10px', textAlign: 'center'}}>
+                      <b>Belum ada foto</b><br/>
+                      Foto akan dikirim sebagai file photo ke backend
+                    </div>
                   </div>
                 )}
               </div>
@@ -207,10 +230,10 @@ export default function Patrol() {
 
         {/* KETERANGAN */}
         <div style={styles.card}>
-          <div style={styles.cardHeader}><span style={styles.headerIcon}>📝</span> Keterangan / Kondisi</div>
+          <div style={styles.cardHeader}><span style={styles.headerIcon}>📝</span> Keterangan Kondisi</div>
           <textarea 
             style={styles.textarea} 
-            placeholder="Contoh: Patroli aman / kondisi aman / dll"
+            placeholder="Contoh: Kondisi aman terkendali..."
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
@@ -222,12 +245,12 @@ export default function Patrol() {
             ➤ Submit Laporan Patroli
           </button>
           <button onClick={() => nav("/satpam")} style={styles.btnBack}>
-            🏠 Kembali ke Dashboard
+            Kembali
           </button>
         </div>
 
         <footer style={styles.footer}>
-          © 2024 RS Islam Fatimah. Bagian Keamanan (Security Department).
+          © 2026 RS Islam Fatimah. Security Department.
         </footer>
       </div>
       <canvas ref={canvasRef} style={{display: 'none'}} />
@@ -236,58 +259,60 @@ export default function Patrol() {
 }
 
 const styles = {
-  page: { backgroundColor: "#f1f5f9", minHeight: "100vh", display: "flex", justifyContent: "center", padding: "40px 0", fontFamily: "'Inter', sans-serif" },
-  wrapper: { width: "95%", maxWidth: "700px", backgroundColor: "transparent" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" },
-  headerLeft: { display: "flex", alignItems: "center", gap: "15px" },
-  logoBox: { width: "45px", height: "45px", backgroundColor: "#064e3b", borderRadius: "10px", display: "flex", justifyContent: "center", alignItems: "center", boxShadow: "0 4px 6px rgba(0,0,0,0.1)" },
-  logo: { width: "70%", height: "70%", objectFit: "contain" },
-  title: { fontSize: "18px", fontWeight: "800", color: "#064e3b" },
-  subtitle: { fontSize: "11px", color: "#94a3b8", fontWeight: "600" },
-  headerRight: { textAlign: "right" },
-  sessionTitle: { fontSize: "14px", fontWeight: "800", color: "#1e293b" },
-  sessionId: { fontSize: "11px", color: "#64748b" },
-  card: { backgroundColor: "#fff", borderRadius: "18px", padding: "24px", marginBottom: "20px", border: "1px solid #e2e8f0", borderTop: "6px solid #b08d00", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" },
-  cardHeader: { fontSize: "15px", fontWeight: "800", color: "#334155", borderBottom: "1px solid #f1f5f9", paddingBottom: "12px", marginBottom: "18px" },
-  cardHeaderFlex: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "15px", fontWeight: "800", color: "#334155", borderBottom: "1px solid #f1f5f9", paddingBottom: "12px", marginBottom: "18px" },
-  headerIcon: { marginRight: "10px", color: "#b08d00" },
-  infoGrid: { display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: "15px" },
-  infoLabel: { fontSize: "10px", fontWeight: "800", color: "#94a3b8", marginBottom: "6px", textTransform: 'uppercase' },
-  infoValue: { fontSize: "14px", fontWeight: "700", color: "#1e293b" },
-  idSub: { color: "#94a3b8", fontWeight: "400" },
-  statusOk: { fontSize: "14px", fontWeight: "700", color: "#10b981" },
-  badgeGps: { fontSize: "9px", backgroundColor: "#dcfce7", color: "#15803d", padding: "3px 10px", borderRadius: "6px", marginLeft: "10px", fontWeight: "700" },
-  btnMaps: { fontSize: "11px", border: "1.5px solid #b08d00", background: "#fff", color: "#b08d00", padding: "6px 12px", borderRadius: "8px", fontWeight: "800", cursor: "pointer" },
-  mapContainer: { height: "220px", backgroundColor: "#f1f5f9", borderRadius: "15px", overflow: "hidden", border: "1px solid #e2e8f0" },
-  mapFooter: { fontSize: "10px", color: "#94a3b8", marginTop: "12px", fontWeight: "500" },
-  cameraGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "25px" },
-  subLabel: { fontSize: "10px", fontWeight: "800", color: "#94a3b8", marginBottom: "12px" },
-  videoBox: { position: "relative", width: "100%", aspectRatio: "4/3", backgroundColor: "#000", borderRadius: "15px", overflow: "hidden" },
-  video: { width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" },
-  btnCapture: { 
-    position: "absolute", 
-    bottom: "12px", 
-    left: "50%", 
-    transform: "translateX(-50%)", 
-    width: "85%", 
-    backgroundColor: "#064e3b", 
-    color: "#fff", 
-    border: "none", 
-    borderRadius: "12px", 
-    fontSize: "12px", 
-    fontWeight: "800", 
-    padding: "12px 0", 
-    cursor: "pointer", 
-    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.3)",
-    zIndex: 10 // ✅ PENTING: Biar gak ketutup video
+  page: { backgroundColor: "#f8fafc", minHeight: "100vh", display: "flex", justifyContent: "center", padding: "20px 10px", fontFamily: "'Inter', sans-serif" },
+  wrapper: { width: "100%" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" },
+  headerLeft: { display: "flex", alignItems: "center", gap: "12px" },
+  
+  logoWrapper: { 
+    width: "45px", 
+    height: "45px", 
+    display: "flex", 
+    justifyContent: "center", 
+    alignItems: "center",
+    backgroundColor: "transparent"
   },
-  previewBox: { width: "100%", aspectRatio: "4/3", borderRadius: "15px", border: "2px dashed #e2e8f0", backgroundColor: "#fcfdfe", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  
+  logo: { width: "100%", height: "100%", objectFit: "contain" },
+  title: { fontSize: "16px", fontWeight: "800", color: "#064e3b" },
+  subtitle: { fontSize: "10px", color: "#94a3b8", fontWeight: "600" },
+  headerRight: { textAlign: "right" },
+  sessionTitle: { fontSize: "12px", fontWeight: "800", color: "#1e293b" },
+  sessionId: { fontSize: "9px", color: "#64748b" },
+  card: { backgroundColor: "#fff", borderRadius: "20px", padding: "20px", marginBottom: "15px", border: "1px solid #e2e8f0", borderTop: "5px solid #b08d00", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" },
+  cardHeader: { fontSize: "14px", fontWeight: "800", color: "#334155", borderBottom: "1px solid #f1f5f9", paddingBottom: "10px", marginBottom: "15px" },
+  cardHeaderFlex: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "14px", fontWeight: "800", color: "#334155", borderBottom: "1px solid #f1f5f9", paddingBottom: "10px", marginBottom: "15px" },
+  headerIcon: { marginRight: "8px", color: "#b08d00" },
+  infoGrid: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" },
+  infoLabel: { fontSize: "9px", fontWeight: "800", color: "#94a3b8", marginBottom: "4px" },
+  infoValue: { fontSize: "13px", fontWeight: "700", color: "#1e293b" },
+  statusOk: { fontSize: "12px", fontWeight: "700", color: "#10b981" },
+  
+  // ✅ STYLES MAPS
+  mapContainer: { height: "180px", backgroundColor: "#f1f5f9", borderRadius: "12px", overflow: "hidden", border: "1px solid #e2e8f0" },
+  mapFooter: { fontSize: "10px", color: "#94a3b8", marginTop: "10px" },
+  badgeGps: { fontSize: "8px", backgroundColor: "#dcfce7", color: "#15803d", padding: "2px 8px", borderRadius: "4px", marginLeft: "8px", fontWeight: '800' },
+  btnMaps: { fontSize: "10px", border: "1.5px solid #b08d00", background: "#fff", color: "#b08d00", padding: "5px 10px", borderRadius: "8px", fontWeight: "800", cursor: "pointer" },
+
+  // STYLES LAYOUT DINAMIS
+  camVerticalLayout: { display: "flex", flexDirection: "column", gap: "15px" },
+  camHorizontalLayout: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "25px" },
+  camSectionMobile: { width: "100%" },
+  camSectionWeb: { width: "100%", display: "flex", flexDirection: "column", gap: "10px" },
+  subLabel: { fontSize: "10px", fontWeight: "800", color: "#94a3b8", marginBottom: "8px" },
+  videoBoxMobile: { width: "100%", aspectRatio: "3/4", backgroundColor: "#000", borderRadius: "15px", overflow: "hidden" },
+  previewBoxMobile: { width: "100%", aspectRatio: "3/4", borderRadius: "15px", border: "2px dashed #e2e8f0", backgroundColor: "#fcfdfe", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  videoBoxWeb: { width: "100%", aspectRatio: "16/9", backgroundColor: "#000", borderRadius: "15px", overflow: "hidden" },
+  previewBoxWeb: { width: "100%", aspectRatio: "16/9", borderRadius: "15px", border: "2px dashed #e2e8f0", backgroundColor: "#fcfdfe", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  video: { width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" },
   previewImg: { width: "100%", height: "100%", objectFit: "cover" },
-  camReady: { fontSize: "12px", color: "#10b981", fontWeight: "700" },
+  btnCaptureMobile: { width: "100%", backgroundColor: "#064e3b", color: "#fff", border: "none", borderRadius: "12px", padding: "15px 0", fontWeight: "800", cursor: "pointer" },
+  btnCaptureWeb: { width: "100%", backgroundColor: "#064e3b", color: "#fff", border: "none", borderRadius: "12px", padding: "12px 0", fontWeight: "800", cursor: "pointer", marginTop: "5px" },
+  camReady: { fontSize: "11px", color: "#10b981", fontWeight: "700" },
   placeholderBox: { textAlign: "center", padding: "20px" },
-  textarea: { width: "100%", border: "2px solid #f1f5f9", borderRadius: "15px", padding: "15px", fontSize: "14px", minHeight: "100px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", color: "#334155" },
-  actionArea: { marginTop: "15px" },
-  btnSubmit: { width: "100%", backgroundColor: "#064e3b", color: "#fff", border: "none", borderRadius: "15px", padding: "18px", fontWeight: "800", fontSize: "16px", marginBottom: "12px", cursor: "pointer", boxShadow: "0 10px 15px -3px rgba(6, 78, 59, 0.3)" },
-  btnBack: { width: "100%", backgroundColor: "#fff", color: "#b08d00", border: "2px solid #b08d00", borderRadius: "15px", padding: "14px", fontWeight: "800", fontSize: "14px", cursor: "pointer" },
-  footer: { textAlign: "center", fontSize: "11px", color: "#cbd5e1", marginTop: "50px", fontWeight: "500" }
+  textarea: { width: "100%", border: "2px solid #f1f5f9", borderRadius: "12px", padding: "12px", fontSize: "14px", minHeight: "100px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" },
+  actionArea: { marginTop: "10px" },
+  btnSubmit: { width: "100%", backgroundColor: "#064e3b", color: "#fff", border: "none", borderRadius: "16px", padding: "18px", fontWeight: "800", fontSize: "16px", marginBottom: "12px", cursor: "pointer" },
+  btnBack: { width: "100%", backgroundColor: "#fff", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: "16px", padding: "12px", fontWeight: "700", fontSize: "14px" },
+  footer: { textAlign: "center", fontSize: "10px", color: "#cbd5e1", marginTop: "30px" }
 };

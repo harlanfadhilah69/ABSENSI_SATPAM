@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuthContext } from "../../context/AuthContext";
-// ✅ Import logo patroli yang kamu kirim tadi
 import logoImg from "../../assets/logo_patroli.png"; 
+// ✅ Import Icon Modern
+import { Eye, EyeOff, User, Lock } from "lucide-react";
 
 export default function Login() {
   const nav = useNavigate();
@@ -13,8 +14,17 @@ export default function Login() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 600);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 600);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -40,231 +50,99 @@ export default function Login() {
   };
 
   return (
-    <div style={containerStyle}>
-      {/* --- HEADER LOGO SECTION --- */}
-      <div style={{ textAlign: "center", marginBottom: 30 }}>
-        <div style={logoCircle}>
-          <img src={logoImg} alt="Logo Patroli" style={logoImageStyle} />
+    <div style={styles.container}>
+      <div style={{ textAlign: "center", marginBottom: isMobile ? 20 : 30 }}>
+        <div style={{...styles.logoWrapper, width: isMobile ? "120px" : "150px", height: isMobile ? "120px" : "150px"}}>
+          <img src={logoImg} alt="Logo Patroli" style={styles.logoImg} />
         </div>
-        <h1 style={titleStyle}>RS Islam Fatimah Cilacap</h1>
-        <p style={subtitleStyle}>PATROL GUARD RSIFC</p>
+        <h1 style={{ ...styles.brandTitle, fontSize: isMobile ? "22px" : "26px" }}>
+          RS Islam Fatimah Cilacap
+        </h1>
+        <p style={styles.brandSubtitle}>PATROL GUARD RSIFC</p>
       </div>
 
-      {/* --- LOGIN CARD --- */}
-      <div style={formCard}>
-        <h2 style={cardTitle}>Login Ke Akun</h2>
-        <p style={cardSubtitle}>Masukkan kredensial Anda untuk akses sistem</p>
+      <div style={{...styles.formCard, padding: isMobile ? "30px 20px" : "40px"}}>
+        <h2 style={styles.cardTitle}>Login Akun</h2>
+        <p style={styles.cardSubtitle}>Silahkan Login Terlebih Dahulu</p>
 
         <form onSubmit={submit}>
-          <div style={inputGroup}>
-            <label style={labelStyle}>Username</label>
-            <div style={inputWrapper}>
-              <span style={iconStyle}>👤</span>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Username</label>
+            <div style={styles.inputWrapper}>
+              <User size={18} style={styles.inputIcon} />
               <input
-                placeholder="Contoh: satpam_fatimah"
+                placeholder="Masukkan Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                style={inputStyle}
+                style={styles.input}
                 required
               />
             </div>
           </div>
 
-          <div style={inputGroup}>
+          <div style={styles.inputGroup}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <label style={labelStyle}>Password</label>
-              <span style={forgotPass}>Lupa password?</span>
+              <label style={styles.label}>Password</label>
+              <span style={styles.forgotPass}>Lupa password?</span>
             </div>
-            <div style={inputWrapper}>
-              <span style={iconStyle}>🔒</span>
+            <div style={styles.inputWrapper}>
+              <Lock size={18} style={styles.inputIcon} />
               <input
                 placeholder="••••••••"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={inputStyle}
+                style={styles.input}
                 required
               />
+              <button 
+                type="button" 
+                onClick={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
           </div>
 
-          {msg && <div style={errorBox}>{msg}</div>}
+          {msg && <div style={styles.errorBox}>{msg}</div>}
 
-          <button type="submit" disabled={loading} style={btnSubmit}>
-            {loading ? "Memproses..." : "Masuk ➔"}
+          <button type="submit" disabled={loading} style={styles.btnSubmit}>
+            {loading ? "Memproses..." : "Masuk Sekarang"}
           </button>
         </form>
 
-        <div style={footerLink}>
-          Belum punya akun? <Link to="/register" style={linkStyle}>Daftar di sini</Link>
+        <div style={styles.footerLink}>
+          Belum punya akun? <Link to="/register" style={styles.linkText}>Daftar di sini</Link>
         </div>
       </div>
 
-      <footer style={copyrightStyle}>
-        © 2026 RS Islam Fatimah, Bagian Keamanan.
+      <footer style={styles.copyright}>
+        © 2026 RS Islam Fatimah Security System
       </footer>
     </div>
   );
 }
 
-// --- STYLES (Identik dengan Gambar/Mockup) ---
-
-const containerStyle = {
-  backgroundColor: "#f4f7f6",
-  minHeight: "100vh",
-  padding: "40px 20px",
-  fontFamily: "'Inter', sans-serif",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center"
-};
-
-const logoCircle = {
-  width: "100px",
-  height: "100px",
-  backgroundColor: "#004d00", 
-  borderRadius: "50%",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  margin: "0 auto 15px",
-  boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
-  border: "3px solid #fff",
-  overflow: "hidden"
-};
-
-const logoImageStyle = {
-  width: "85%",
-  height: "85%",
-  objectFit: "contain"
-};
-
-const titleStyle = {
-  margin: "0",
-  fontSize: "24px",
-  color: "#1a1a1a",
-  fontWeight: "800",
-  letterSpacing: "-0.5px"
-};
-
-const subtitleStyle = {
-  margin: "5px 0 0 0",
-  fontSize: "12px",
-  letterSpacing: "3px",
-  color: "#666",
-  fontWeight: "600"
-};
-
-const formCard = {
-  maxWidth: "400px",
-  width: "100%",
-  padding: "40px",
-  borderRadius: "24px",
-  background: "white",
-  boxShadow: "0 20px 40px rgba(0,0,0,0.06)",
-  border: "1px solid #f0f0f0",
-  marginTop: "20px"
-};
-
-const cardTitle = {
-  textAlign: "center",
-  margin: "0",
-  fontSize: "20px",
-  color: "#1a1a1a",
-  fontWeight: "700"
-};
-
-const cardSubtitle = {
-  textAlign: "center",
-  color: "#888",
-  fontSize: "13px",
-  margin: "8px 0 25px 0"
-};
-
-const inputGroup = { marginBottom: 20 };
-
-const labelStyle = { 
-  display: "block", 
-  marginBottom: 8, 
-  fontSize: "13px", 
-  fontWeight: "600", 
-  color: "#444" 
-};
-
-const inputWrapper = {
-  position: "relative",
-  display: "flex",
-  alignItems: "center"
-};
-
-const iconStyle = {
-  position: "absolute",
-  left: "14px",
-  fontSize: "14px",
-  color: "#aaa"
-};
-
-const inputStyle = {
-  width: "100%",
-  padding: "12px 15px 12px 40px",
-  borderRadius: "12px",
-  border: "1px solid #e0e0e0",
-  fontSize: "14px",
-  backgroundColor: "#fcfcfc",
-  boxSizing: "border-box",
-  outline: "none",
-  transition: "border 0.2s"
-};
-
-const forgotPass = {
-  fontSize: "11px",
-  color: "#b08d00",
-  fontWeight: "600",
-  cursor: "pointer"
-};
-
-const errorBox = {
-  padding: "10px",
-  backgroundColor: "#fff5f5",
-  color: "#c53030",
-  borderRadius: "8px",
-  fontSize: "12px",
-  marginBottom: "15px",
-  border: "1px solid #fed7d7",
-  textAlign: "center"
-};
-
-const btnSubmit = {
-  width: "100%",
-  padding: "14px",
-  backgroundColor: "#1a3a1a", 
-  color: "white",
-  border: "none",
-  borderRadius: "12px",
-  cursor: "pointer",
-  fontWeight: "700",
-  fontSize: "15px",
-  transition: "transform 0.1s ease",
-  marginTop: "10px"
-};
-
-const footerLink = {
-  marginTop: "25px",
-  textAlign: "center",
-  fontSize: "13px",
-  color: "#666"
-};
-
-const linkStyle = {
-  color: "#b08d00",
-  textDecoration: "none",
-  fontWeight: "700"
-};
-
-const copyrightStyle = {
-  marginTop: "30px",
-  fontSize: "11px",
-  color: "#999",
-  textAlign: "center"
+const styles = {
+  container: { backgroundColor: "#f4f7f6", minHeight: "100vh", padding: "20px", fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
+  logoWrapper: { display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 10px", backgroundColor: "transparent" },
+  logoImg: { width: "100%", height: "100%", objectFit: "contain" },
+  brandTitle: { margin: "0", color: "#1a1a1a", fontWeight: "800", letterSpacing: "-0.5px", textAlign: 'center' },
+  brandSubtitle: { margin: "5px 0 0 0", fontSize: "11px", letterSpacing: "3px", color: "#64748b", fontWeight: "600", textTransform: "uppercase", textAlign: 'center' },
+  formCard: { maxWidth: "400px", width: "100%", borderRadius: "24px", background: "white", boxShadow: "0 20px 40px rgba(0,0,0,0.06)", border: "1px solid #f0f0f0", boxSizing: 'border-box', marginTop: "10px" },
+  cardTitle: { textAlign: "center", margin: "0", fontSize: "20px", color: "#1e293b", fontWeight: "700" },
+  cardSubtitle: { textAlign: "center", color: "#94a3b8", fontSize: "13px", margin: "8px 0 25px 0" },
+  inputGroup: { marginBottom: 20 },
+  label: { display: "block", marginBottom: 8, fontSize: "13px", fontWeight: "600", color: "#475569" },
+  inputWrapper: { position: "relative", display: "flex", alignItems: "center", width: "100%" },
+  inputIcon: { position: "absolute", left: "14px", color: "#94a3b8" },
+  input: { width: "100%", padding: "14px 45px 14px 42px", borderRadius: "12px", border: "1.5px solid #e2e8f0", fontSize: "14px", backgroundColor: "#fcfcfc", boxSizing: "border-box", outline: "none", transition: "all 0.2s" },
+  eyeButton: { position: "absolute", right: "12px", background: "none", border: "none", cursor: "pointer", color: "#94a3b8", display: "flex", alignItems: "center", padding: "5px" },
+  forgotPass: { fontSize: "11px", color: "#b08d00", fontWeight: "600", cursor: "pointer" },
+  errorBox: { padding: "10px", backgroundColor: "#fef2f2", color: "#991b1b", borderRadius: "10px", fontSize: "12px", marginBottom: "15px", border: "1px solid #fecaca", textAlign: "center" },
+  btnSubmit: { width: "100%", padding: "16px", backgroundColor: "#064e3b", color: "white", border: "none", borderRadius: "12px", cursor: "pointer", fontWeight: "700", fontSize: "15px", marginTop: "10px", boxShadow: "0 4px 12px rgba(6, 78, 59, 0.2)" },
+  footerLink: { marginTop: "25px", textAlign: "center", fontSize: "14px", color: "#64748b" },
+  linkText: { color: "#b08d00", textDecoration: "none", fontWeight: "700" },
+  copyright: { marginTop: "30px", fontSize: "10px", color: "#94a3b8", textAlign: "center", letterSpacing: "0.5px" }
 };
