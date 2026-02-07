@@ -145,7 +145,7 @@ const styles = {
     margin: "0 auto"
   },
   logoSection: { display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" },
-  logoWrapper: { width: "45px", height: "45px", display: "flex", justifyContent: "center", alignItems: "center" },
+  logoWrapper: { width: "70px", height: "70px", display: "flex", justifyContent: "center", alignItems: "center", backgroundColor: "transparent",},
   logoImage: { width: "100%", height: "100%", objectFit: "contain" },
   brandName: { fontSize: "18px", fontWeight: "800", color: "#064e3b" },
   brandNameSmall: { fontSize: "15px", fontWeight: "800", color: "#064e3b" },

@@ -30,7 +30,7 @@ export default function SatpamNavbar() {
         <div style={styles.container}>
           {/* LOGO & JUDUL - Diperkecil untuk Mobile agar tidak meluber */}
           <div style={styles.brand} onClick={() => nav("/satpam")}>
-            <div style={{...styles.logoWrapper, width: isMobile ? "40px" : "60px", height: isMobile ? "40px" : "60px"}}>
+            <div style={{...styles.logoWrapper, width: isMobile ? "80px" : "80px", height: isMobile ? "80px" : "80px"}}>
               <img src={logoImg} alt="Logo" style={styles.logoImg} />
             </div>
             <div style={styles.textWrapper}>
