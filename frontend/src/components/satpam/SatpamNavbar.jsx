@@ -1,22 +1,22 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react"; 
-// ✅ Import logo patroli
+import { useAuthContext } from "../../context/AuthContext"; 
 import logoImg from "../../assets/logo_patroli.png";
+import { Menu, X, LogOut, ScanLine, UserCircle } from "lucide-react"; // ✅ Icon modern
 
 export default function SatpamNavbar() {
   const nav = useNavigate();
+  const { user } = useAuthContext();
   
-  // State untuk deteksi mobile agar ukuran elemen menyesuaikan otomatis
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 600);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isMenuOpen, setIsMenuOpen] = useState(false); // ✅ State menu HP
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 600);
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  // State untuk Modal Logout Kustom
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const confirmLogout = () => {
     setShowLogoutModal(false);
@@ -28,48 +28,77 @@ export default function SatpamNavbar() {
     <>
       <nav style={styles.navbar}>
         <div style={styles.container}>
-          {/* LOGO & JUDUL - Diperkecil untuk Mobile agar tidak meluber */}
+          
+          {/* LEFT: LOGO & BRAND */}
           <div style={styles.brand} onClick={() => nav("/satpam")}>
             <div style={{...styles.logoWrapper, width: isMobile ? "80px" : "80px", height: isMobile ? "80px" : "80px"}}>
               <img src={logoImg} alt="Logo" style={styles.logoImg} />
             </div>
             <div style={styles.textWrapper}>
-              <div style={{...styles.mainTitle, fontSize: isMobile ? "16px" : "22px"}}>Dashboard Satpam</div>
-              <div style={{...styles.subTitle, fontSize: isMobile ? "10px" : "13px"}}>RS Islam Fatimah</div>
+              <div style={{...styles.mainTitle, fontSize: isMobile ? "14px" : "18px"}}>
+                {isMobile ? "RSIFC PATROL" : "RS ISLAM FATIMAH CILACAP"}
+              </div>
+              {!isMobile && <div style={styles.subTitle}>Security System</div>}
             </div>
           </div>
 
-          {/* MENU KANAN - Menggunakan tombol yang lebih ramping di HP */}
-          <div style={{...styles.menu, gap: isMobile ? "8px" : "12px"}}>
-            <button onClick={() => nav("/scan")} style={{...styles.btnScan, padding: isMobile ? "8px 12px" : "10px 20px"}}>
-              <span style={{ fontSize: isMobile ? '14px' : '18px' }}>📲</span> {!isMobile ? "Scan QR" : "Scan QR"}
-            </button>
+          {/* RIGHT SECTION: PROFILE & ACTIONS */}
+          <div style={styles.rightSection}>
+            
+            {/* PROFIL: Selalu terlihat di luar (HP maupun Web) */}
+            <div style={{...styles.profileWrapper, borderRight: isMobile ? "none" : "1.5px solid #f1f5f9"}}>
+              <div style={styles.userInfo}>
+                <div style={{...styles.userName, fontSize: isMobile ? "11px" : "14px"}}>
+                  {isMobile ? user?.name?.split(' ')[0] : user?.name || "Petugas"}
+                </div>
+                <div style={styles.userRole}>SATPAM</div>
+              </div>
+              <UserCircle size={isMobile ? 28 : 32} color="#94a3b8" />
+            </div>
 
-            <button onClick={() => setShowLogoutModal(true)} style={{...styles.btnLogout, padding: isMobile ? "8px 12px" : "10px 20px"}}>
-              <span style={{ fontSize: isMobile ? '14px' : '18px' }}>⬅️</span> {!isMobile ? "Keluar" : "Keluar"}
-            </button>
+            {/* NAVIGASI: Desktop (Tombol) vs Mobile (Hamburger) */}
+            {!isMobile ? (
+              // TAMPILAN WEB (Desktop)
+              <div style={styles.menuDesktop}>
+                <button onClick={() => nav("/scan")} style={styles.btnScan}>
+                  <ScanLine size={16} /> Scan QR
+                </button>
+                <button onClick={() => setShowLogoutModal(true)} style={styles.btnLogout}>
+                  <LogOut size={16} /> Keluar
+                </button>
+              </div>
+            ) : (
+              // TAMPILAN HP (Hamburger Menu)
+              <button style={styles.menuToggle} onClick={() => setIsMenuOpen(!isMenuOpen)}>
+                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            )}
           </div>
+
+          {/* DROPDOWN KHUSUS HP */}
+          {isMobile && isMenuOpen && (
+            <div style={styles.mobileDropdown}>
+              <button onClick={() => { nav("/scan"); setIsMenuOpen(false); }} style={styles.dropdownItem}>
+                <ScanLine size={18} /> Scan QR Jaga
+              </button>
+              <button onClick={() => { setShowLogoutModal(true); setIsMenuOpen(false); }} style={styles.dropdownItemDanger}>
+                <LogOut size={18} /> Keluar Sistem
+              </button>
+            </div>
+          )}
         </div>
       </nav>
 
-      {/* --- KUSTOM MODAL LOGOUT (SENADA DENGAN BRAND) --- */}
+      {/* MODAL LOGOUT */}
       {showLogoutModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
-            <div style={styles.modalHeader}>
-              <div style={styles.modalIconBox}>⚠️</div>
-              <h3 style={styles.modalTitle}>Konfirmasi Keluar</h3>
-            </div>
-            <p style={styles.modalBody}>
-              Apakah Anda yakin ingin keluar dari akun petugas keamanan?
-            </p>
+            <div style={styles.modalIconBox}><LogOut size={24} /></div>
+            <h3 style={styles.modalTitle}>Konfirmasi Keluar</h3>
+            <p style={styles.modalBody}>Yakin ingin mengakhiri sesi patroli?</p>
             <div style={styles.modalFooter}>
-              <button onClick={() => setShowLogoutModal(false)} style={styles.btnCancel}>
-                Batal
-              </button>
-              <button onClick={confirmLogout} style={styles.btnConfirm}>
-                Ya, Keluar
-              </button>
+              <button onClick={() => setShowLogoutModal(false)} style={styles.btnCancel}>Batal</button>
+              <button onClick={confirmLogout} style={styles.btnConfirm}>Ya, Keluar</button>
             </div>
           </div>
         </div>
@@ -81,11 +110,11 @@ export default function SatpamNavbar() {
 const styles = {
   navbar: {
     backgroundColor: "#ffffff",
-    borderBottom: "4px solid #b08d00", // Aksen emas tetap dipertahankan
-    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+    borderBottom: "4px solid #b08d00",
+    boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
     position: "sticky",
     top: 0,
-    zIndex: 50,
+    zIndex: 1000,
     width: "100%",
     fontFamily: "'Inter', sans-serif",
   },
@@ -96,106 +125,60 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    position: "relative"
   },
   brand: { display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" },
-  
-  logoWrapper: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "transparent", 
-  },
-  
-  logoImg: { 
-    width: "100%", 
-    height: "100%", 
-    objectFit: "contain"
-  },
-  
+  logoWrapper: { display: "flex", justifyContent: "center", alignItems: "center" },
+  logoImg: { width: "100%", height: "100%", objectFit: "contain" },
   textWrapper: { display: "flex", flexDirection: "column" },
-  mainTitle: { fontWeight: "800", color: "#064e3b", lineHeight: "1.1" },
-  subTitle: { color: "#6b7280", fontWeight: "600" },
-  menu: { display: "flex" },
+  mainTitle: { fontWeight: "900", color: "#064e3b", lineHeight: "1.1" },
+  subTitle: { color: "#94a3b8", fontWeight: "700", fontSize: "13px", textTransform: 'uppercase' },
+  
+  rightSection: { display: "flex", alignItems: "center", gap: "15px" },
 
+  profileWrapper: { display: "flex", alignItems: "center", gap: "10px", paddingRight: "10px" },
+  userInfo: { textAlign: "right" },
+  userName: { fontWeight: "800", color: "#1e293b", lineHeight: "1.2" },
+  userRole: { color: "#94a3b8", fontWeight: "700", fontSize: "9px" },
+
+  // WEB VIEW STYLES
+  menuDesktop: { display: "flex", gap: "10px", marginLeft: "10px" },
   btnScan: {
-    backgroundColor: "#064e3b", 
-    color: "white",
-    border: "none",
-    borderRadius: "10px",
-    fontWeight: "700",
-    fontSize: "13px",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
+    backgroundColor: "#064e3b", color: "white", border: "none", borderRadius: "8px",
+    padding: "8px 15px", fontWeight: "700", fontSize: "12px", cursor: "pointer",
+    display: "flex", alignItems: "center", gap: "6px"
   },
   btnLogout: {
-    backgroundColor: "#fff",
-    color: "#be123c",
-    border: "1.5px solid #fee2e2",
-    borderRadius: "10px",
-    fontWeight: "700",
-    fontSize: "13px",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
+    backgroundColor: "#fff", color: "#be123c", border: "1.5px solid #fee2e2",
+    padding: "8px 15px", borderRadius: "8px", fontWeight: "700", fontSize: "12px",
+    cursor: "pointer", display: "flex", alignItems: "center", gap: "6px"
   },
 
-  /* --- MODAL STYLES --- */
-  modalOverlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: "100vw",
-    height: "100vh",
-    backgroundColor: "rgba(15, 23, 42, 0.6)",
-    backdropFilter: "blur(4px)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 2000,
+  // MOBILE VIEW STYLES
+  menuToggle: { background: "none", border: "none", color: "#064e3b", cursor: "pointer", display: "flex" },
+  mobileDropdown: {
+    position: "absolute", top: "100%", right: "15px", backgroundColor: "#fff",
+    borderRadius: "12px", boxShadow: "0 10px 25px rgba(0,0,0,0.1)", border: "1px solid #f1f5f9",
+    width: "190px", marginTop: "10px", overflow: "hidden"
   },
-  modalContent: {
-    backgroundColor: "#fff",
-    width: "85%",
-    maxWidth: "380px",
-    padding: "25px",
-    borderRadius: "20px",
-    boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)",
-    textAlign: "center",
+  dropdownItem: {
+    width: "100%", padding: "12px 15px", border: "none", background: "none",
+    textAlign: "left", display: "flex", alignItems: "center", gap: "10px",
+    fontSize: "13px", fontWeight: "600", color: "#334155", cursor: "pointer"
   },
-  modalIconBox: {
-    width: "50px",
-    height: "50px",
-    backgroundColor: "#fef2f2",
-    color: "#be123c",
-    borderRadius: "50%",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    fontSize: "20px",
-    margin: "0 auto 15px auto",
+  dropdownItemDanger: {
+    width: "100%", padding: "12px 15px", border: "none", background: "#fff1f2",
+    textAlign: "left", display: "flex", alignItems: "center", gap: "10px",
+    fontSize: "13px", fontWeight: "700", color: "#be123c", cursor: "pointer"
   },
+
+  // MODAL STYLES
+  modalOverlay: { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 2000 },
+  modalContent: { backgroundColor: "#fff", width: "85%", maxWidth: "320px", padding: "25px", borderRadius: "20px", textAlign: "center" },
+  modalIconBox: { width: "50px", height: "50px", backgroundColor: "#fff1f2", color: "#be123c", borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 15px" },
   modalTitle: { fontSize: "18px", fontWeight: "800", color: "#1e293b", margin: 0 },
-  modalBody: { fontSize: "14px", color: "#64748b", lineHeight: "1.5", marginBottom: "25px" },
-  modalFooter: { display: "flex", gap: "10px", justifyContent: "center" },
-  btnCancel: {
-    flex: 1,
-    padding: "10px",
-    borderRadius: "10px",
-    border: "1.5px solid #e2e8f0",
-    backgroundColor: "#fff",
-    color: "#64748b",
-    fontWeight: "700",
-  },
-  btnConfirm: {
-    flex: 1,
-    padding: "10px",
-    borderRadius: "10px",
-    border: "none",
-    backgroundColor: "#064e3b",
-    color: "#fff",
-    fontWeight: "700",
-  },
+  modalBody: { fontSize: "14px", color: "#64748b", lineHeight: "1.5", margin: "10px 0 25px" },
+  modalFooter: { display: "flex", gap: "10px" },
+  btnCancel: { flex: 1, padding: "10px", borderRadius: "10px", border: "1.5px solid #e2e8f0", backgroundColor: "#fff", color: "#64748b", fontWeight: "700" },
+  btnConfirm: { flex: 1, padding: "10px", borderRadius: "10px", border: "none", backgroundColor: "#064e3b", color: "#fff", fontWeight: "700" },
 };

@@ -24,7 +24,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({ todayCount: 0, lastPatrolTime: "Belum ada data" });
   const [qrUrl, setQrUrl] = useState("");
   const [qrMeta, setQrMeta] = useState(null);
-  const MY_LAPTOP_IP = "http://192.168.18.75:5173"; 
+  const MY_LAPTOP_IP = "http://192.168.0.113:5173"; 
 
   useEffect(() => {
     fetchPosts();

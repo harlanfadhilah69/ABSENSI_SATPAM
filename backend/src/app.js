@@ -14,7 +14,7 @@ app.use(
   cors({
     origin: [
         'http://localhost:5173', 
-        'http://192.168.18.75:5173' // <--- INI WAJIB ADA
+        'http://192.168.0.113:5173' // <--- INI WAJIB ADA
     ],
     credentials: true,
   })
