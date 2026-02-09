@@ -77,7 +77,6 @@ export default function AdminDashboard() {
     } catch (e) { showNotif("error", "Gagal generate QR"); }
   }
 
-  // ✅ FUNGSI DOWNLOAD PNG (PERBAIKAN UTAMA)
   const downloadQR = () => {
     const canvas = document.getElementById("qr-canvas");
     if (!canvas) return;
@@ -114,15 +113,19 @@ export default function AdminDashboard() {
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: isMobile ? "20px 15px" : "40px 20px" }}>
         
-        {/* --- HEADER SECTION --- */}
+        {/* --- HEADER SECTION DENGAN AKSEN EMAS VERTIKAL --- */}
         <div style={{ ...styles.headerFlex, flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", gap: isMobile ? 20 : 0 }}>
-          <div>
-            <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>
-              Admin Dashboard <span style={{ color: "#10b981" }}>✔</span>
-            </h1>
-            <p style={{ color: "#64748b", margin: "5px 0 0 0", fontSize: 14 }}>
-              Pantau keamanan dan kelola titik pos secara real-time.
-            </p>
+          <div style={{ display: "flex", gap: "15px", alignItems: "flex-start" }}>
+            {/* Aksen emas berdiri */}
+            <div style={{ width: "6px", backgroundColor: "#b08d00", alignSelf: "stretch", borderRadius: "2px" }}></div>
+            <div>
+              <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>
+                Admin Dashboard <span style={{ color: "#10b981" }}>✔</span>
+              </h1>
+              <p style={{ color: "#64748b", margin: "5px 0 0 0", fontSize: 14 }}>
+                Pantau keamanan dan kelola titik pos secara real-time.
+              </p>
+            </div>
           </div>
           <div style={{ display: "flex", gap: 10, width: isMobile ? "100%" : "auto" }}>
             <button onClick={() => nav("/admin/reports")} style={{ ...styles.btnDark, flex: isMobile ? 1 : "none" }}>📄 Laporan Patroli</button>
@@ -135,13 +138,11 @@ export default function AdminDashboard() {
           <div style={{ ...styles.qrTopGrid, gridTemplateColumns: isMobile ? "1fr" : "380px 1fr" }}>
             <div style={styles.qrBoxCard}>
               <div style={styles.qrFrame}>
-                {/* ID ditambahkan agar bisa ditarik filenya oleh fungsi downloadQR */}
                 <QRCodeCanvas id="qr-canvas" value={qrUrl} size={isMobile ? 150 : 200} level="H" imageSettings={{ src: logoImg, height: 40, width: 40, excavate: true }} />
               </div>
               <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
                 <button onClick={() => { navigator.clipboard.writeText(qrUrl); showNotif("success", "Link disalin!"); }} style={styles.btnCopy}>📝 Copy Link</button>
                 <div style={{ display: "flex", gap: 10 }}>
-                  {/* Fungsi Diubah dari window.print() menjadi downloadQR() */}
                   <button onClick={downloadQR} style={styles.btnActionSmall}>📥 PNG</button>
                   <button onClick={() => { setQrUrl(""); setQrMeta(null); }} style={styles.btnActionSmall}>🗑 Clear</button>
                 </div>
@@ -168,7 +169,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* --- DAFTAR POS SECTION --- */}
+        {/* --- DAFTAR POS SECTION DENGAN HEADER HIJAU & AKSEN EMAS --- */}
         <div style={styles.mainCard}>
           <div style={styles.cardHeaderStyle}>
             <strong>📋 Daftar Pos Patroli Aktif</strong>
@@ -256,8 +257,25 @@ const styles = {
   posInfoDetail: { display: "flex", alignItems: "center", gap: 15, padding: "15px", backgroundColor: "#f8fafc", borderRadius: 12 },
   iconMarker: { fontSize: 18 },
   tokenBox: { padding: "15px", backgroundColor: "#f8fafc", borderRadius: 12, border: "1px solid #f1f5f9" },
-  mainCard: { backgroundColor: "#fff", borderRadius: 20, boxShadow: "0 4px 6px rgba(0,0,0,0.05)", border: "1px solid #f1f5f9", marginBottom: 30 },
-  cardHeaderStyle: { padding: "15px 25px", borderBottom: "1px solid #f1f5f9", color: "#064e3b" },
+  
+  // Perbaikan Header Daftar Pos (Halaman Utama Dashboard)
+  mainCard: { 
+    backgroundColor: "#fff", 
+    borderRadius: "16px", 
+    boxShadow: "0 4px 6px rgba(0,0,0,0.05)", 
+    border: "1px solid #f1f5f9", 
+    marginBottom: 30,
+    overflow: "hidden" 
+  },
+  cardHeaderStyle: { 
+    padding: "15px 25px", 
+    backgroundColor: "#064e3b", // Background hijau
+    borderTop: "6px solid #b08d00", // Aksen emas atas
+    color: "#fff", // Teks putih agar terbaca di hijau
+    display: "flex",
+    alignItems: "center"
+  },
+  
   listItem: { display: "flex", justifyContent: "space-between", padding: "15px 0", borderBottom: "1px solid #f8fafc" },
   iconBox: { width: 40, height: 40, backgroundColor: "#f8fafc", borderRadius: 10, display: "flex", justifyContent: "center", alignItems: "center" },
   btnActionGreen: { backgroundColor: "#064e3b", color: "#fff", border: "none", padding: "8px 15px", borderRadius: 8, fontWeight: "700", fontSize: 12 },

@@ -9,15 +9,11 @@ export default function Reports() {
   const [dateTo, setDateTo] = useState("");
   const [satpam, setSatpam] = useState("");
   const [pos, setPos] = useState("");
-  const [msg, setMsg] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // --- STATE UNTUK MODAL KONFIRMASI HAPUS ---
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
-
-  // --- STATE UNTUK NOTIFIKASI (TOAST) ---
   const [notif, setNotif] = useState({ show: false, status: "", message: "" });
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -86,7 +82,6 @@ export default function Reports() {
     doc.save(`Laporan_Patroli.pdf`);
   };
 
-  // --- LOGIKA HAPUS DIPERBARUI ---
   const triggerDelete = (row) => {
     setSelectedRow(row);
     setShowDeleteModal(true);
@@ -116,13 +111,18 @@ export default function Reports() {
       <AdminNavbar />
       
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: isMobile ? "20px 15px" : "40px 20px" }}>
-        {/* HEADER */}
-        <div style={{ ...styles.headerSection, borderLeft: isMobile ? "none" : "8px solid #b08d00" }}>
-          <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>Laporan Patroli</h1>
-          <p style={{ color: "#64748b", fontSize: 14 }}>Monitoring Keamanan RS Islam Fatimah</p>
+        
+        {/* --- HEADER DENGAN AKSEN EMAS BERDIRI --- */}
+        <div style={{ marginBottom: 30, display: "flex", gap: "15px", alignItems: "flex-start" }}>
+          {/* Aksen emas vertikal */}
+          <div style={{ width: "6px", backgroundColor: "#b08d00", alignSelf: "stretch", borderRadius: "2px" }}></div>
+          <div>
+            <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>Laporan Patroli</h1>
+            <p style={{ color: "#64748b", fontSize: 14 }}>Monitoring Keamanan RS Islam Fatimah</p>
+          </div>
         </div>
 
-        {/* FILTER CARD */}
+        {/* --- FILTER CARD --- */}
         <div style={styles.cardContainer}>
           <div style={styles.gridFilter}>
             <div style={styles.inputGroup}><label style={styles.labelStyle}>DARI TANGGAL</label><input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={styles.inputStyle} /></div>
@@ -143,7 +143,7 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* LOGS SECTION */}
+        {/* --- LOGS SECTION DENGAN HEADER HIJAU & AKSEN EMAS --- */}
         <div style={styles.cardContainer}>
           {loading ? (
             <div style={{ padding: 50, textAlign: 'center', color: '#94a3b8' }}>Memuat data...</div>
@@ -168,10 +168,18 @@ export default function Reports() {
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table width="100%" style={{ borderCollapse: "collapse" }}>
-                <thead><tr style={styles.tableHeader}>
-                  <th style={styles.thStyle}>WAKTU</th><th style={styles.thStyle}>SATPAM</th><th style={styles.thStyle}>POS</th>
-                  <th style={styles.thStyle}>CATATAN</th><th style={styles.thStyle}>GPS</th><th style={styles.thStyle}>FOTO</th><th style={styles.thStyle}>AKSI</th>
-                </tr></thead>
+                <thead>
+                  {/* Header Hijau dengan garis emas */}
+                  <tr style={styles.tableHeader}>
+                    <th style={styles.thStyle}>WAKTU</th>
+                    <th style={styles.thStyle}>SATPAM</th>
+                    <th style={styles.thStyle}>POS</th>
+                    <th style={styles.thStyle}>CATATAN</th>
+                    <th style={styles.thStyle}>GPS</th>
+                    <th style={styles.thStyle}>FOTO</th>
+                    <th style={styles.thStyle}>AKSI</th>
+                  </tr>
+                </thead>
                 <tbody>{currentRows.map((r) => (
                   <tr key={r.id} style={styles.trStyle}>
                     <td style={styles.tdStyle}>{formatDateTime(r.captured_at_server || r.created_at)}</td>
@@ -187,7 +195,7 @@ export default function Reports() {
             </div>
           )}
 
-          {/* PAGINATION */}
+          {/* --- PAGINATION --- */}
           {rows.length > 0 && (
             <div style={styles.paginationArea}>
               <div style={{ fontSize: 13, color: "#64748b" }}>Menampilkan <b>{indexOfFirstItem + 1}</b>-<b>{Math.min(indexOfLastItem, rows.length)}</b> dari {rows.length}</div>
@@ -201,7 +209,7 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* --- MODAL KONFIRMASI HAPUS KUSTOM --- */}
+      {/* MODAL KONFIRMASI HAPUS */}
       {showDeleteModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
@@ -218,12 +226,9 @@ export default function Reports() {
         </div>
       )}
 
-      {/* --- FLOATING NOTIFICATION (TOAST) --- */}
+      {/* FLOATING NOTIFICATION */}
       {notif.show && (
-        <div style={{
-          ...styles.notifToast, 
-          backgroundColor: notif.status === "success" ? "#064e3b" : "#be123c"
-        }}>
+        <div style={{ ...styles.notifToast, backgroundColor: notif.status === "success" ? "#064e3b" : "#be123c" }}>
           {notif.status === "success" ? "✅" : "❌"} {notif.message}
         </div>
       )}
@@ -234,8 +239,13 @@ export default function Reports() {
 }
 
 const styles = {
-  headerSection: { marginBottom: 30, paddingLeft: 20 },
-  cardContainer: { backgroundColor: "#fff", borderRadius: 15, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", borderTop: "5px solid #b08d00", marginBottom: 30, overflow: "hidden" },
+  cardContainer: { 
+    backgroundColor: "#fff", 
+    borderRadius: 15, 
+    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", 
+    marginBottom: 30, 
+    overflow: "hidden" 
+  },
   gridFilter: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 20, padding: 25 },
   inputGroup: { display: "flex", flexDirection: "column", gap: 8 },
   labelStyle: { fontSize: 11, fontWeight: "800", color: "#64748b" },
@@ -245,8 +255,23 @@ const styles = {
   btnReset: { backgroundColor: "#fff", color: "#64748b", padding: "12px 25px", borderRadius: 8, border: "1px solid #e2e8f0", fontWeight: "800", cursor: "pointer" },
   btnExport: { backgroundColor: "#064e3b", color: "#fff", padding: "12px 15px", borderRadius: 8, border: "none", fontWeight: "700", cursor: "pointer", fontSize: 12 },
   
-  tableHeader: { backgroundColor: "#064e3b" },
-  thStyle: { padding: "18px 20px", color: "#fff", fontSize: 11, fontWeight: "700", textAlign: "left", textTransform: "uppercase" },
+  // Header Tabel: Background Hijau dengan garis atas Emas
+  tableHeader: { 
+    backgroundColor: "#064e3b", 
+    borderTop: "6px solid #b08d00" 
+  },
+  
+  // Th Style: Teks Putih agar kontras
+  thStyle: { 
+    padding: "18px 20px", 
+    color: "#fff", 
+    fontSize: 11, 
+    fontWeight: "800", 
+    textAlign: "left", 
+    textTransform: "uppercase",
+    letterSpacing: "0.5px"
+  },
+  
   tdStyle: { padding: "15px 20px", fontSize: 14, color: "#1e293b", borderBottom: "1px solid #f1f5f9" },
   trStyle: { transition: 'background 0.2s' },
   imgThumb: { width: 35, height: 35, borderRadius: 8, objectFit: "cover", cursor: 'pointer' },
@@ -266,7 +291,6 @@ const styles = {
   btnPageActive: { border: "none", background: "#064e3b", color: "#fff", minWidth: 30, height: 30, borderRadius: 6, cursor: "pointer", fontSize: 12 },
   footerStyle: { textAlign: "center", marginTop: 60, paddingBottom: 40, borderTop: "1px solid #e2e8f0", paddingTop: 30, color: "#94a3b8", fontSize: 11, letterSpacing: 1 },
 
-  // --- MODAL STYLES ---
   modalOverlay: { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 2000 },
   modalContent: { backgroundColor: "#fff", width: "90%", maxWidth: "400px", padding: "30px", borderRadius: "24px", textAlign: "center", boxShadow: "0 20px 25px rgba(0,0,0,0.1)" },
   modalIconBox: { width: "60px", height: "60px", backgroundColor: "#fef2f2", color: "#be123c", borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 15px", fontSize: "24px" },
@@ -275,7 +299,5 @@ const styles = {
   modalFooter: { display: "flex", gap: "10px" },
   btnCancel: { flex: 1, padding: "12px", borderRadius: "12px", border: "1.5px solid #e2e8f0", backgroundColor: "#fff", color: "#64748b", fontWeight: "700", cursor: 'pointer' },
   btnConfirmRed: { flex: 1, padding: "12px", borderRadius: "12px", border: "none", backgroundColor: "#be123c", color: "#fff", fontWeight: "700", cursor: 'pointer' },
-
-  // --- TOAST STYLES ---
   notifToast: { position: "fixed", top: "20px", right: "20px", color: "#fff", padding: "15px 25px", borderRadius: "12px", fontWeight: "700", boxShadow: "0 10px 15px rgba(0,0,0,0.2)", zIndex: 3000 }
 };

@@ -70,7 +70,6 @@ export default function ManageUsers() {
     });
   };
 
-  // --- EKSEKUSI ACTION (LOGIKA DIPERBAIKI) ---
   const handleConfirmAction = async () => {
     const { type, userData, inputValue } = modal;
     
@@ -81,11 +80,7 @@ export default function ManageUsers() {
       } 
       else if (type === "password") {
         if (!inputValue) return showNotif("error", "Password tidak boleh kosong!");
-
-        // ✅ Kirim ke backend. Backend harus divalidasi agar tidak boleh sama dengan yang lama.
-        // Jika backend menolak, dia akan masuk ke blok 'catch' di bawah.
-        const res = await api.put(`/admin/users/${userData.id}/password`, { password: inputValue });
-        
+        await api.put(`/admin/users/${userData.id}/password`, { password: inputValue });
         showNotif("success", "Password berhasil diubah!");
       } 
       else if (type === "delete") {
@@ -96,10 +91,7 @@ export default function ManageUsers() {
       setModal({ ...modal, show: false });
       fetchUsers();
     } catch (err) {
-      // ✅ MENANGKAP ERROR DARI BACKEND (Gagal ubah password, dll)
       const errorMsg = err.response?.data?.message || "Gagal memproses permintaan";
-      
-      // Jika error, modal tetap ditutup dan munculkan notif merah
       setModal({ ...modal, show: false });
       showNotif("error", `Gagal: ${errorMsg}`);
     }
@@ -110,31 +102,41 @@ export default function ManageUsers() {
       <AdminNavbar />
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: isMobile ? "20px 15px" : "40px 20px" }}>
-        <div style={{ marginBottom: 30, borderLeft: isMobile ? "none" : "8px solid #b08d00", paddingLeft: isMobile ? 0 : 20 }}>
-          <h1 style={{ fontSize: isMobile ? 26 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>Kelola User 👥</h1>
-          <p style={{ color: "#64748b", fontSize: 14 }}>Manajemen personil RS Islam Fatimah</p>
+        
+        {/* --- HEADER SECTION DENGAN AKSEN EMAS BERDIRI --- */}
+        <div style={{ marginBottom: 30, display: "flex", gap: "15px", alignItems: "flex-start" }}>
+          {/* Aksen emas vertikal */}
+          <div style={{ width: "6px", backgroundColor: "#b08d00", alignSelf: "stretch", borderRadius: "2px" }}></div>
+          <div>
+            <h1 style={{ fontSize: isMobile ? 26 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>Kelola User 👥</h1>
+            <p style={{ color: "#64748b", fontSize: 14 }}>Manajemen personil RS Islam Fatimah</p>
+          </div>
         </div>
 
+        {/* --- CARD CONTAINER DENGAN HEADER HIJAU & AKSEN EMAS --- */}
         <div style={styles.cardContainer}>
           {loading ? (
             <div style={{ padding: 50, textAlign: 'center' }}>Memuat...</div>
           ) : (
-            <div style={{ overflowX: "auto", padding: isMobile ? '10px' : '0' }}>
+            <div style={{ overflowX: "auto" }}>
               {isMobile ? (
-                users.map((u) => (
-                  <div key={u.id} style={styles.mobileCard}>
-                    <div style={styles.mobileRow}><span style={styles.mobileLabel}>NAMA</span><span style={{ fontWeight: '800' }}>{u.name}</span></div>
-                    <div style={styles.mobileRow}><span style={styles.mobileLabel}>ROLE</span><span style={u.role === "admin" ? styles.badgeAdmin : styles.badgeSatpam}>{u.role.toUpperCase()}</span></div>
-                    <div style={styles.mobileActions}>
-                      <button onClick={() => openRoleModal(u)} style={styles.btnUbahMobile}>Role</button>
-                      <button onClick={() => openPasswordModal(u)} style={styles.btnResetMobile}>Pass</button>
-                      <button onClick={() => openDeleteModal(u)} style={styles.btnHapusMobile}>Hapus</button>
+                <div style={{ padding: '10px' }}>
+                  {users.map((u) => (
+                    <div key={u.id} style={styles.mobileCard}>
+                      <div style={styles.mobileRow}><span style={styles.mobileLabel}>NAMA</span><span style={{ fontWeight: '800' }}>{u.name}</span></div>
+                      <div style={styles.mobileRow}><span style={styles.mobileLabel}>ROLE</span><span style={u.role === "admin" ? styles.badgeAdmin : styles.badgeSatpam}>{u.role.toUpperCase()}</span></div>
+                      <div style={styles.mobileActions}>
+                        <button onClick={() => openRoleModal(u)} style={styles.btnUbahMobile}>Role</button>
+                        <button onClick={() => openPasswordModal(u)} style={styles.btnResetMobile}>Pass</button>
+                        <button onClick={() => openDeleteModal(u)} style={styles.btnHapusMobile}>Hapus</button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               ) : (
                 <table width="100%" style={{ borderCollapse: "collapse" }}>
                   <thead>
+                    {/* Header Tabel Hijau dengan garis emas atas */}
                     <tr style={styles.tableHeader}>
                       <th align="left" style={styles.thStyle}>NAMA LENGKAP</th>
                       <th align="left" style={styles.thStyle}>USERNAME</th>
@@ -204,9 +206,31 @@ export default function ManageUsers() {
 }
 
 const styles = {
-  cardContainer: { backgroundColor: "#fff", borderRadius: "18px", overflow: 'hidden', boxShadow: "0 4px 6px rgba(0,0,0,0.05)", borderTop: '5px solid #b08d00', marginBottom: 25 },
-  tableHeader: { backgroundColor: "#f8fafc" },
-  thStyle: { padding: "18px 25px", fontSize: "11px", color: "#94a3b8", fontWeight: "800", textTransform: 'uppercase' },
+  // Card Container dengan sudut tumpul dan overflow hidden agar header tidak meluber
+  cardContainer: { 
+    backgroundColor: "#fff", 
+    borderRadius: "16px", 
+    overflow: 'hidden', 
+    boxShadow: "0 4px 6px rgba(0,0,0,0.05)", 
+    marginBottom: 25 
+  },
+  
+  // Header Tabel: Background Hijau dengan garis atas Emas
+  tableHeader: { 
+    backgroundColor: "#064e3b", 
+    borderTop: '6px solid #b08d00' 
+  },
+  
+  // Th Style: Teks Putih agar kontras dengan background hijau
+  thStyle: { 
+    padding: "18px 25px", 
+    fontSize: "11px", 
+    color: "#fff", 
+    fontWeight: "800", 
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px'
+  },
+  
   tdStyle: { padding: "18px 25px", fontSize: "14px", borderBottom: "1px solid #f8fafc" },
   trStyle: { transition: 'background 0.2s' },
   actionGroupWeb: { display: "flex", gap: "8px", justifyContent: "center" },
