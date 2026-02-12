@@ -117,7 +117,9 @@ export default function Reports() {
           {/* Aksen emas vertikal */}
           <div style={{ width: "6px", backgroundColor: "#b08d00", alignSelf: "stretch", borderRadius: "2px" }}></div>
           <div>
-            <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>Laporan Patroli</h1>
+            <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>
+            Laporan Patroli <span style={{ color: "#10b981" }}>📋</span>
+            </h1>
             <p style={{ color: "#64748b", fontSize: 14 }}>Monitoring Keamanan RS Islam Fatimah</p>
           </div>
         </div>

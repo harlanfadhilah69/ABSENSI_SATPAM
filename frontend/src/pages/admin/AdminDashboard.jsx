@@ -120,7 +120,7 @@ export default function AdminDashboard() {
             <div style={{ width: "6px", backgroundColor: "#b08d00", alignSelf: "stretch", borderRadius: "2px" }}></div>
             <div>
               <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>
-                Admin Dashboard <span style={{ color: "#10b981" }}>✔</span>
+                Admin Dashboard <span style={{ color: "#10b981" }}>👨🏻‍💻</span>
               </h1>
               <p style={{ color: "#64748b", margin: "5px 0 0 0", fontSize: 14 }}>
                 Pantau keamanan dan kelola titik pos secara real-time.
@@ -172,7 +172,7 @@ export default function AdminDashboard() {
         {/* --- DAFTAR POS SECTION DENGAN HEADER HIJAU & AKSEN EMAS --- */}
         <div style={styles.mainCard}>
           <div style={styles.cardHeaderStyle}>
-            <strong>📋 Daftar Pos Patroli Aktif</strong>
+            <strong>📝 Daftar Pos Patroli Aktif</strong>
           </div>
           <div style={{ padding: isMobile ? "10px" : "10px 25px" }}>
             {posts.map((p) => (

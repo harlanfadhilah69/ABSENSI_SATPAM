@@ -10,7 +10,6 @@ export default function SatpamHome() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ LOGIKA RESPONSIVITAS
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -76,9 +75,9 @@ export default function SatpamHome() {
             </button>
         </div>
 
-        {/* FILTER SECTION - RESPONSIVE GRID */}
+        {/* FILTER SECTION DENGAN HEADER HIJAU & AKSEN EMAS */}
         <div style={styles.cardContainer}>
-          <div style={styles.cardHeaderEmas}>
+          <div style={styles.cardHeaderHijau}>
               <span style={{marginRight: 8}}>⏳</span> Filter Histori
           </div>
           
@@ -108,9 +107,9 @@ export default function SatpamHome() {
           </div>
         </div>
 
-        {/* LOGS SECTION - TABLE (WEB) VS CARDS (MOBILE) */}
+        {/* HISTORI SECTION DENGAN HEADER HIJAU & AKSEN EMAS */}
         <div style={styles.cardContainer}>
-            <div style={styles.cardHeaderEmas}>
+            <div style={styles.cardHeaderHijau}>
                 <span style={{marginRight: 8}}>📋</span> Histori Patroli Saya
             </div>
             
@@ -119,7 +118,6 @@ export default function SatpamHome() {
             ) : currentRows.length === 0 ? (
               <div style={{padding: 50, textAlign: 'center', color: '#94a3b8'}}>Tidak ada riwayat.</div>
             ) : isMobile ? (
-              /* --- MOBILE VIEW: CARD STYLE --- */
               <div style={{ padding: '15px' }}>
                 {currentRows.map((r) => (
                   <div key={r.id} style={styles.mobileCard}>
@@ -151,7 +149,6 @@ export default function SatpamHome() {
                 ))}
               </div>
             ) : (
-              /* --- WEB VIEW: TABLE STYLE --- */
               <div style={{ overflowX: "auto" }}>
                   <table width="100%" style={{ borderCollapse: "collapse" }}>
                   <thead>
@@ -218,8 +215,20 @@ export default function SatpamHome() {
 
 // --- STYLES OBJECT ---
 const styles = {
-  cardContainer: { backgroundColor: "#fff", borderRadius: "18px", overflow: 'hidden', boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", borderTop: '5px solid #b08d00', marginBottom: 25 },
-  cardHeaderEmas: { padding: '15px 20px', backgroundColor: '#fff', borderBottom: '1px solid #f1f5f9', fontWeight: '800', color: '#1e293b', fontSize: '15px' },
+  cardContainer: { backgroundColor: "#fff", borderRadius: "18px", overflow: 'hidden', boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", marginBottom: 25 },
+  
+  // Update Header Style: Hijau Gelap dengan Aksen Emas Atas
+  cardHeaderHijau: { 
+    padding: '15px 20px', 
+    backgroundColor: '#064e3b', 
+    borderTop: '6px solid #b08d00', 
+    fontWeight: '800', 
+    color: '#fff', 
+    fontSize: '15px',
+    display: 'flex',
+    alignItems: 'center'
+  },
+
   inputContainer: { display: 'flex', flexDirection: 'column', gap: '5px' },
   labelStyle: { fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
   inputStyle: { padding: "12px 15px", borderRadius: "12px", border: "1.5px solid #e2e8f0", fontSize: "14px", width: '100%', boxSizing: 'border-box', outline: 'none' },
