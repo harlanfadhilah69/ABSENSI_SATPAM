@@ -1,9 +1,8 @@
-// src/controllers/patrol.controller.js
 const postsRepo = require("../repositories/posts.repo");
 const patrolService = require("../services/patrol.service");
 const tokenService = require("../services/token.service");
 
-// ✅ 1. FUNGSI SCAN (INI YANG BIKIN HP NYANGKUT TADI)
+// ✅ 1. FUNGSI SCAN (DIPERBAIKI)
 exports.scan = async (req, res, next) => {
   try {
     const { post_id, token } = req.query;
@@ -18,13 +17,20 @@ exports.scan = async (req, res, next) => {
       return res.status(404).json({ message: "Pos tidak ditemukan / tidak aktif" });
     }
 
-    // Validasi Token (Memakai fungsi statis yang anti-kadaluarsa)
+    // ✅ LOGIKA BARU: Jika token adalah "manual_entry", langsung loloskan
+    if (token === "manual_entry") {
+      return res.json({
+        message: "Mode input manual aktif",
+        post: post
+      });
+    }
+
+    // Validasi Token QR Asli
     const valid = tokenService.validateToken({ postId: post_id, token });
     if (!valid) {
       return res.status(401).json({ message: "Token QR tidak valid" });
     }
 
-    // ✅ WAJIB ADA: Kirim jawaban sukses ke HP Satpam agar loading berhenti
     return res.json({
       message: "Scan berhasil",
       post: post
@@ -36,7 +42,8 @@ exports.scan = async (req, res, next) => {
 };
 
 
-// ✅ 2. FUNGSI SUBMIT (Kodinganmu sudah benar, saya rapikan saja)
+// ✅ 2. FUNGSI SUBMIT (DIPERBAIKI)
+// Ganti bagian exports.submit di Patrol.controller.js:
 exports.submit = async (req, res, next) => {
   try {
     const user = req.user;
@@ -55,22 +62,18 @@ exports.submit = async (req, res, next) => {
       return res.status(404).json({ message: "Pos tidak ditemukan / tidak aktif" });
     }
 
-    // Logika QR vs Manual
-    if (token) {
+    if (token && token !== "manual_entry") {
       const valid = tokenService.validateToken({ postId: post_id, token });
       if (!valid) {
         return res.status(401).json({ message: "Token QR tidak valid" });
       }
-    } else {
-      console.log(`[INFO] User ${user.id} melakukan input manual untuk Pos ${post_id}`);
     }
 
-    // Parsing GPS
-    const parsedLat = lat !== undefined && lat !== "" ? Number(lat) : null;
-    const parsedLng = lng !== undefined && lng !== "" ? Number(lng) : null;
-    const parsedAcc = accuracy !== undefined && accuracy !== "" ? Number(accuracy) : null;
+    // ✅ Parsing GPS dengan presisi lebih baik
+    const parsedLat = lat ? parseFloat(lat) : null;
+    const parsedLng = lng ? parseFloat(lng) : null;
+    const parsedAcc = accuracy ? parseFloat(accuracy) : null;
 
-    // Simpan ke Database
     const result = await patrolService.createPatrolLog({
       userId: user.id,
       postId: post_id,
@@ -79,7 +82,7 @@ exports.submit = async (req, res, next) => {
       deviceInfo: req.headers["user-agent"] || "",
       lat: parsedLat,
       lng: parsedLng,
-      accuracy: parsedAcc,
+      accuracy: parsedAcc, // ✅ Tersimpan ke DB
     });
 
     res.status(201).json({

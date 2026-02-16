@@ -26,16 +26,60 @@ export default function Scan() {
     }
   }, [urlPostId, urlToken]);
 
+  // ✅ PROSES SCAN DENGAN OPTIMASI GPS AKURASI TINGGI
   const processScan = async (pid, tok) => {
-    setStatus("⏳ Memeriksa data...");
+    setStatus("⏳ Mengunci GPS Akurat..."); // Status baru agar satpam menunggu GPS lock
     await stopCamera(); 
 
+    // Fungsi internal untuk mendapatkan koordinat presisi tinggi
+    const getPreciseLocation = () => {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+
+    let watchId;
+    let bestCoords = null;
+    let timer;
+
+    // Kita pantau lokasi selama 5 detik untuk mencari yang TERBAIK
+    watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const coords = pos.coords;
+        // Simpan koordinat jika ini yang paling akurat sejauh ini
+        if (!bestCoords || coords.accuracy < bestCoords.accuracy) {
+          bestCoords = coords;
+        }
+        
+        // Jika akurasi sudah sangat bagus (di bawah 10 meter), langsung stop dan pakai ini
+        if (coords.accuracy <= 10) {
+          clearTimeout(timer);
+          navigator.geolocation.clearWatch(watchId);
+          resolve(coords);
+        }
+      },
+      () => {}, // Abaikan error sementara saat proses pencarian
+      { enableHighAccuracy: true, maximumAge: 0 }
+    );
+
+    // Batasi waktu pencarian maksimal 7 detik agar satpam tidak menunggu terlalu lama
+    timer = setTimeout(() => {
+      navigator.geolocation.clearWatch(watchId);
+      resolve(bestCoords); // Kembalikan koordinat terbaik yang sempat didapat
+    }, 7000);
+  });
+};
+
     try {
-      await api.get(`/patrol/scan?post_id=${pid}&token=${tok}`);
+      // Ambil GPS terlebih dahulu sebelum verifikasi token ke API
+      const coords = await getPreciseLocation();
+      const accuracyParam = coords ? `&acc=${coords.accuracy}` : "";
+
+      // Verifikasi data ke backend
+      await api.get(`/patrol/scan?post_id=${pid}&token=${tok}${accuracyParam}`);
       setStatus("✅ BERHASIL! Masuk...");
       
       setTimeout(() => {
-        window.location.href = `/satpam/patrol?post_id=${pid}&token=${tok}`;
+        // Pindah ke halaman submit dengan membawa parameter akurasi
+        window.location.href = `/satpam/patrol?post_id=${pid}&token=${tok}${accuracyParam}`;
       }, 1000);
 
     } catch (e) {
@@ -117,10 +161,11 @@ export default function Scan() {
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
-    if(manualId) {
-        window.location.href = `/satpam/patrol?post_id=${manualId}&token=manual_entry`;
+    if (manualId) {
+        // ✅ Panggil processScan agar melewati validasi GPS Akurat & Backend
+        processScan(manualId, "manual_entry");
     }
-  }
+  };
 
   return (
     <div style={styles.containerStyle}>
@@ -216,7 +261,7 @@ export default function Scan() {
   );
 }
 
-// --- DEFINISI STYLES AGAR TIDAK ERROR ---
+// --- DEFINISI STYLES ---
 const styles = {
   containerStyle: { backgroundColor: "#fcfdfe", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px", fontFamily: "'Inter', sans-serif" },
   logoCircle: { width: "80px", height: "80px", backgroundColor: "#064e3b", borderRadius: "18px", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 10px", boxShadow: "0 8px 16px rgba(6, 78, 59, 0.2)" },
@@ -239,7 +284,6 @@ const styles = {
   footerMenu: { display: "flex", gap: "20px", marginTop: "30px", fontSize: "12px", color: "#9ca3af", fontWeight: "600" },
   copyright: { marginTop: "15px", fontSize: "10px", color: "#d1d5db" },
   statusLoadingBox: { padding: "40px 20px", background: "#f0fdf4", color: "#166534", borderRadius: "20px", textAlign: "center", border: "1px solid #dcfce7" },
-  // Dekorasi Siku Kamera
   cornerTL: { position: "absolute", width: "30px", height: "30px", border: "4px solid #eab308", top: "20px", left: "20px", borderRight: "none", borderBottom: "none", borderRadius: "8px 0 0 0", zIndex: 10 },
   cornerTR: { position: "absolute", width: "30px", height: "30px", border: "4px solid #eab308", top: "20px", right: "20px", borderLeft: "none", borderBottom: "none", borderRadius: "0 8px 0 0", zIndex: 10 },
   cornerBL: { position: "absolute", width: "30px", height: "30px", border: "4px solid #eab308", bottom: "20px", left: "20px", borderRight: "none", borderTop: "none", borderRadius: "0 0 0 8px", zIndex: 10 },

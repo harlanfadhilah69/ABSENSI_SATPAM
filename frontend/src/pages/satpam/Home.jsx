@@ -55,6 +55,28 @@ export default function SatpamHome() {
     }
   };
 
+  // ✅ PERBAIKAN BUG RESET (Langsung tarik data tanpa filter)
+  const handleReset = async () => {
+    // 1. Kosongkan state input
+    setDateFrom("");
+    setDateTo("");
+    setPos("");
+
+    // 2. Tarik data ulang dengan parameter kosong
+    setLoading(true);
+    try {
+      const res = await api.get("/satpam/patrol/logs", { 
+        params: { date_from: "", date_to: "", pos: "" } 
+      });
+      setRows(res.data?.data || []);
+      setCurrentPage(1);
+    } catch (e) {
+      setMsg("Gagal mereset data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => { fetchLogs(); }, []);
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -75,7 +97,7 @@ export default function SatpamHome() {
             </button>
         </div>
 
-        {/* FILTER SECTION DENGAN HEADER HIJAU & AKSEN EMAS */}
+        {/* FILTER SECTION */}
         <div style={styles.cardContainer}>
           <div style={styles.cardHeaderHijau}>
               <span style={{marginRight: 8}}>⏳</span> Filter Histori
@@ -102,12 +124,13 @@ export default function SatpamHome() {
               </div>
               <div style={{ display: 'flex', gap: 10, width: isMobile ? '100%' : 'auto' }}>
                   <button onClick={fetchLogs} style={{...styles.btnCari, flex: isMobile ? 1 : 'none'}}>Cari</button>
-                  <button onClick={() => { setDateFrom(""); setDateTo(""); setPos(""); fetchLogs(); }} style={{...styles.btnReset, flex: isMobile ? 1 : 'none'}}>Reset</button>
+                  {/* ✅ MENGGUNAKAN handleReset AGAR TABEL LANGSUNG KEMBALI NORMAL */}
+                  <button onClick={handleReset} style={{...styles.btnReset, flex: isMobile ? 1 : 'none'}}>Reset</button>
               </div>
           </div>
         </div>
 
-        {/* HISTORI SECTION DENGAN HEADER HIJAU & AKSEN EMAS */}
+        {/* HISTORI SECTION */}
         <div style={styles.cardContainer}>
             <div style={styles.cardHeaderHijau}>
                 <span style={{marginRight: 8}}>📋</span> Histori Patroli Saya
@@ -188,7 +211,6 @@ export default function SatpamHome() {
               </div>
             )}
 
-            {/* PAGINATION */}
             {rows.length > 0 && (
               <div style={styles.paginationArea}>
                 <div style={styles.pageInfo}>
@@ -213,44 +235,27 @@ export default function SatpamHome() {
   );
 }
 
-// --- STYLES OBJECT ---
 const styles = {
   cardContainer: { backgroundColor: "#fff", borderRadius: "18px", overflow: 'hidden', boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", marginBottom: 25 },
-  
-  // Update Header Style: Hijau Gelap dengan Aksen Emas Atas
-  cardHeaderHijau: { 
-    padding: '15px 20px', 
-    backgroundColor: '#064e3b', 
-    borderTop: '6px solid #b08d00', 
-    fontWeight: '800', 
-    color: '#fff', 
-    fontSize: '15px',
-    display: 'flex',
-    alignItems: 'center'
-  },
-
+  cardHeaderHijau: { padding: '15px 20px', backgroundColor: '#064e3b', borderTop: '6px solid #b08d00', fontWeight: '800', color: '#fff', fontSize: '15px', display: 'flex', alignItems: 'center' },
   inputContainer: { display: 'flex', flexDirection: 'column', gap: '5px' },
   labelStyle: { fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
   inputStyle: { padding: "12px 15px", borderRadius: "12px", border: "1.5px solid #e2e8f0", fontSize: "14px", width: '100%', boxSizing: 'border-box', outline: 'none' },
-  
   btnCari: { padding: "12px 25px", borderRadius: 12, border: "none", background: "#064e3b", color: "white", fontWeight: "800", cursor: "pointer", boxShadow: '0 4px 6px rgba(6,78,59,0.2)' },
   btnReset: { padding: "12px 20px", borderRadius: 12, border: "1.5px solid #e2e8f0", background: "#fff", color: "#64748b", fontWeight: "700", cursor: "pointer" },
   btnRefresh: { padding: "10px 20px", borderRadius: 12, border: "none", background: "#fff", color: "#1e293b", fontWeight: "800", boxShadow: '0 4px 6px rgba(0,0,0,0.05)', cursor: 'pointer' },
-
   tableHeader: { background: "#f8fafc" },
   thStyle: { padding: "15px 20px", fontSize: "11px", color: "#94a3b8", fontWeight: "800" },
   tdStyle: { padding: "18px 20px", fontSize: "14px", borderBottom: "1px solid #f1f5f9" },
+  trStyle: { transition: 'background 0.2s' },
   linkMaps: { color: "#b08d00", textDecoration: "none", fontWeight: "800", fontSize: "13px" },
   imgThumb: { width: "50px", height: "50px", objectFit: "cover", borderRadius: "12px", border: "2px solid #f1f5f9", cursor: 'pointer' },
-
-  /* MOBILE CARD STYLES */
   mobileCard: { padding: '20px', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '12px' },
   mobileCardRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   mobileLabel: { fontSize: '10px', fontWeight: '800', color: '#94a3b8' },
   mobileValue: { fontSize: '13px', fontWeight: '600', color: '#1e293b' },
   mobileCardActions: { display: 'flex', gap: '10px', marginTop: '5px' },
   btnActionMobile: { flex: 1, padding: '10px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', color: '#1e293b', fontSize: '12px', fontWeight: '800', cursor: 'pointer' },
-
   paginationArea: { padding: "15px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff" },
   pageInfo: { fontSize: "12px", color: "#94a3b8", fontWeight: '600' },
   pageButtons: { display: "flex", gap: "5px", alignItems: "center" },

@@ -13,8 +13,9 @@ const app = express();
 app.use(
   cors({
     origin: [
-        'http://localhost:5173', 
-        'http://192.168.0.113:5173' // <--- INI WAJIB ADA
+      "http://localhost:5173",
+      "http://192.168.0.106:5173", // IP saat ini
+      /^http:\/\/192\.168\.0\.\d{1,3}:5173$/ // Mengizinkan semua IP 192.168.0.xxx
     ],
     credentials: true,
   })

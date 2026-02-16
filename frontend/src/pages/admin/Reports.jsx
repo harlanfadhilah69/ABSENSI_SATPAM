@@ -65,8 +65,31 @@ export default function Reports() {
     }
   };
 
+  // ✅ FUNGSI RESET YANG DIPERBAIKI (BUG FIX & AUTO-FETCH)
+  const handleReset = async () => {
+    // 1. Bersihkan State Input
+    setDateFrom("");
+    setDateTo("");
+    setSatpam("");
+    setPos("");
+
+    // 2. Langsung tarik data tanpa filter agar tabel kembali normal
+    setLoading(true);
+    try {
+      const res = await api.get("/admin/reports", { 
+        params: { date_from: "", date_to: "", satpam: "", pos: "" } 
+      });
+      setRows(res.data?.data || []);
+      setCurrentPage(1);
+    } catch (e) {
+      showNotif("error", "Gagal mereset data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const exportPDF = (isCurrentPageOnly = false) => {
-    const doc = new jsPDF("l", "mm", "a4");
+    const doc = jsPDF("l", "mm", "a4");
     const dataToExport = isCurrentPageOnly ? currentRows : rows;
     doc.text(`LAPORAN PATROLI ${isCurrentPageOnly ? 'HALAMAN ' + currentPage : 'TOTAL'}`, 14, 15);
     autoTable(doc, {
@@ -112,9 +135,7 @@ export default function Reports() {
       
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: isMobile ? "20px 15px" : "40px 20px" }}>
         
-        {/* --- HEADER DENGAN AKSEN EMAS BERDIRI --- */}
         <div style={{ marginBottom: 30, display: "flex", gap: "15px", alignItems: "flex-start" }}>
-          {/* Aksen emas vertikal */}
           <div style={{ width: "6px", backgroundColor: "#b08d00", alignSelf: "stretch", borderRadius: "2px" }}></div>
           <div>
             <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>
@@ -124,7 +145,6 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* --- FILTER CARD --- */}
         <div style={styles.cardContainer}>
           <div style={styles.gridFilter}>
             <div style={styles.inputGroup}><label style={styles.labelStyle}>DARI TANGGAL</label><input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={styles.inputStyle} /></div>
@@ -136,7 +156,7 @@ export default function Reports() {
           <div style={{ ...styles.filterActions, flexDirection: isMobile ? "column" : "row" }}>
             <div style={{ display: "flex", gap: 10, width: isMobile ? '100%' : 'auto' }}>
               <button onClick={fetchData} style={{ ...styles.btnFilter, flex: isMobile ? 1 : 'none' }}>FILTER</button>
-              <button onClick={() => { setDateFrom(""); setDateTo(""); setSatpam(""); setPos(""); fetchData(); }} style={{ ...styles.btnReset, flex: isMobile ? 1 : 'none' }}>RESET</button>
+              <button onClick={handleReset} style={{ ...styles.btnReset, flex: isMobile ? 1 : 'none' }}>RESET</button>
             </div>
             <div style={{ display: "flex", gap: 10, width: isMobile ? '100%' : 'auto' }}>
               <button onClick={() => exportPDF(true)} style={{ ...styles.btnExport, flex: isMobile ? 1 : 'none' }}>DOWNLOAD THIS PAGE PDF</button>
@@ -145,7 +165,6 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* --- LOGS SECTION DENGAN HEADER HIJAU & AKSEN EMAS --- */}
         <div style={styles.cardContainer}>
           {loading ? (
             <div style={{ padding: 50, textAlign: 'center', color: '#94a3b8' }}>Memuat data...</div>
@@ -160,7 +179,12 @@ export default function Reports() {
                   <div style={styles.mobileRow}><span style={styles.mobileLabel}>POS</span><span style={{ color: '#064e3b', fontWeight: '800' }}>{r.post_name}</span></div>
                   <div style={styles.mobileRow}><span style={styles.mobileLabel}>CATATAN</span><span style={{ fontStyle: 'italic' }}>{r.note || "Aman"}</span></div>
                   <div style={styles.mobileActions}>
-                    {r.lat && <button onClick={() => window.open(`http://maps.google.com/?q=${r.lat},${r.lng}`)} style={styles.btnActionSmall}>📍 Peta</button>}
+                    {r.lat && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <button onClick={() => window.open(`https://www.google.com/maps?q=${r.lat},${r.lng}`)} style={styles.btnActionSmall}>📍 Peta</button>
+                        <span style={{ fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>±{Math.round(r.accuracy || 0)}m</span>
+                      </div>
+                    )}
                     {r.photo_path && <button onClick={() => window.open(fotoUrl(r.photo_path))} style={styles.btnActionSmall}>📷 Foto</button>}
                     <button onClick={() => triggerDelete(r)} style={styles.btnActionDelete}>🗑 Hapus</button>
                   </div>
@@ -171,7 +195,6 @@ export default function Reports() {
             <div style={{ overflowX: "auto" }}>
               <table width="100%" style={{ borderCollapse: "collapse" }}>
                 <thead>
-                  {/* Header Hijau dengan garis emas */}
                   <tr style={styles.tableHeader}>
                     <th style={styles.thStyle}>WAKTU</th>
                     <th style={styles.thStyle}>SATPAM</th>
@@ -188,8 +211,15 @@ export default function Reports() {
                     <td style={{ ...styles.tdStyle, fontWeight: "700" }}>{r.satpam_name || r.username}</td>
                     <td style={styles.tdStyle}>{r.post_name || "-"}</td>
                     <td style={{ ...styles.tdStyle, color: "#64748b" }}>"{r.note || "-"}"</td>
-                    <td style={styles.tdStyle}>{r.lat && <a href={`http://maps.google.com/?q=${r.lat},${r.lng}`} target="_blank" style={styles.linkMaps}>📍 Maps</a>}</td>
-                    <td style={styles.tdStyle}>{r.photo_path && <img src={fotoUrl(r.photo_path)} style={styles.imgThumb} onClick={() => window.open(fotoUrl(r.photo_path))} />}</td>
+                    <td style={styles.tdStyle}>
+                      {r.lat && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <a href={`https://www.google.com/maps?q=${r.lat},${r.lng}`} target="_blank" rel="noreferrer" style={styles.linkMaps}>📍 Maps</a>
+                          <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '600' }}>±{Math.round(r.accuracy || 0)}m</span>
+                        </div>
+                      )}
+                    </td>
+                    <td style={styles.tdStyle}>{r.photo_path && <img src={fotoUrl(r.photo_path)} alt="patrol" style={styles.imgThumb} onClick={() => window.open(fotoUrl(r.photo_path))} />}</td>
                     <td style={styles.tdStyle}><button onClick={() => triggerDelete(r)} style={styles.btnHapus}>HAPUS</button></td>
                   </tr>
                 ))}</tbody>
@@ -197,7 +227,6 @@ export default function Reports() {
             </div>
           )}
 
-          {/* --- PAGINATION --- */}
           {rows.length > 0 && (
             <div style={styles.paginationArea}>
               <div style={{ fontSize: 13, color: "#64748b" }}>Menampilkan <b>{indexOfFirstItem + 1}</b>-<b>{Math.min(indexOfLastItem, rows.length)}</b> dari {rows.length}</div>
@@ -211,7 +240,6 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* MODAL KONFIRMASI HAPUS */}
       {showDeleteModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
@@ -228,7 +256,6 @@ export default function Reports() {
         </div>
       )}
 
-      {/* FLOATING NOTIFICATION */}
       {notif.show && (
         <div style={{ ...styles.notifToast, backgroundColor: notif.status === "success" ? "#064e3b" : "#be123c" }}>
           {notif.status === "success" ? "✅" : "❌"} {notif.message}
@@ -241,13 +268,7 @@ export default function Reports() {
 }
 
 const styles = {
-  cardContainer: { 
-    backgroundColor: "#fff", 
-    borderRadius: 15, 
-    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", 
-    marginBottom: 30, 
-    overflow: "hidden" 
-  },
+  cardContainer: { backgroundColor: "#fff", borderRadius: 15, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", marginBottom: 30, overflow: "hidden" },
   gridFilter: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 20, padding: 25 },
   inputGroup: { display: "flex", flexDirection: "column", gap: 8 },
   labelStyle: { fontSize: 11, fontWeight: "800", color: "#64748b" },
@@ -256,43 +277,24 @@ const styles = {
   btnFilter: { backgroundColor: "#064e3b", color: "#fff", padding: "12px 25px", borderRadius: 8, border: "none", fontWeight: "800", cursor: "pointer" },
   btnReset: { backgroundColor: "#fff", color: "#64748b", padding: "12px 25px", borderRadius: 8, border: "1px solid #e2e8f0", fontWeight: "800", cursor: "pointer" },
   btnExport: { backgroundColor: "#064e3b", color: "#fff", padding: "12px 15px", borderRadius: 8, border: "none", fontWeight: "700", cursor: "pointer", fontSize: 12 },
-  
-  // Header Tabel: Background Hijau dengan garis atas Emas
-  tableHeader: { 
-    backgroundColor: "#064e3b", 
-    borderTop: "6px solid #b08d00" 
-  },
-  
-  // Th Style: Teks Putih agar kontras
-  thStyle: { 
-    padding: "18px 20px", 
-    color: "#fff", 
-    fontSize: 11, 
-    fontWeight: "800", 
-    textAlign: "left", 
-    textTransform: "uppercase",
-    letterSpacing: "0.5px"
-  },
-  
+  tableHeader: { backgroundColor: "#064e3b", borderTop: "6px solid #b08d00" },
+  thStyle: { padding: "18px 20px", color: "#fff", fontSize: 11, fontWeight: "800", textAlign: "left", textTransform: "uppercase", letterSpacing: "0.5px" },
   tdStyle: { padding: "15px 20px", fontSize: 14, color: "#1e293b", borderBottom: "1px solid #f1f5f9" },
   trStyle: { transition: 'background 0.2s' },
   imgThumb: { width: 35, height: 35, borderRadius: 8, objectFit: "cover", cursor: 'pointer' },
   linkMaps: { color: "#b08d00", fontSize: 12, fontWeight: "700", textDecoration: "none" },
   btnHapus: { backgroundColor: "#fff", color: "#be123c", border: "1.5px solid #ffe4e6", padding: "6px 12px", borderRadius: 6, fontSize: 11, fontWeight: "800", cursor: "pointer" },
-
   mobileCard: { padding: '20px', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '10px' },
   mobileRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' },
   mobileLabel: { fontSize: '10px', fontWeight: '800', color: '#94a3b8' },
   mobileActions: { display: 'flex', gap: '10px', marginTop: '10px' },
   btnActionSmall: { flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '11px', fontWeight: '800' },
   btnActionDelete: { flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #ffe4e6', background: '#fef2f2', color: '#be123c', fontSize: '11px', fontWeight: '800' },
-
   paginationArea: { padding: "20px 25px", display: "flex", justifyContent: "space-between", alignItems: "center" },
   btnNav: { border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", borderRadius: 6, padding: "5px 10px", cursor: "pointer" },
   btnPage: { border: "1px solid #e2e8f0", background: "transparent", minWidth: 30, height: 30, borderRadius: 6, cursor: "pointer", fontSize: 12 },
   btnPageActive: { border: "none", background: "#064e3b", color: "#fff", minWidth: 30, height: 30, borderRadius: 6, cursor: "pointer", fontSize: 12 },
   footerStyle: { textAlign: "center", marginTop: 60, paddingBottom: 40, borderTop: "1px solid #e2e8f0", paddingTop: 30, color: "#94a3b8", fontSize: 11, letterSpacing: 1 },
-
   modalOverlay: { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 2000 },
   modalContent: { backgroundColor: "#fff", width: "90%", maxWidth: "400px", padding: "30px", borderRadius: "24px", textAlign: "center", boxShadow: "0 20px 25px rgba(0,0,0,0.1)" },
   modalIconBox: { width: "60px", height: "60px", backgroundColor: "#fef2f2", color: "#be123c", borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 15px", fontSize: "24px" },

@@ -24,7 +24,8 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({ todayCount: 0, lastPatrolTime: "Belum ada data" });
   const [qrUrl, setQrUrl] = useState("");
   const [qrMeta, setQrMeta] = useState(null);
-  const MY_LAPTOP_IP = "http://192.168.0.113:5173"; 
+
+  // ✅ KITA HAPUS MY_LAPTOP_IP manual agar tidak perlu ganti-ganti lagi
 
   useEffect(() => {
     fetchPosts();
@@ -71,8 +72,10 @@ export default function AdminDashboard() {
       const data = res.data;
       setQrMeta(data);
       if (data?.url) {
+        // ✅ JURUS SAKTI: Menggunakan window.location.origin agar otomatis 
+        // mengikuti apakah kamu buka di localhost atau di IP
         const urlObj = new URL(data.url); 
-        setQrUrl(`${MY_LAPTOP_IP}${urlObj.pathname}${urlObj.search}`);
+        setQrUrl(`${window.location.origin}${urlObj.pathname}${urlObj.search}`);
       }
     } catch (e) { showNotif("error", "Gagal generate QR"); }
   }
@@ -113,10 +116,8 @@ export default function AdminDashboard() {
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: isMobile ? "20px 15px" : "40px 20px" }}>
         
-        {/* --- HEADER SECTION DENGAN AKSEN EMAS VERTIKAL --- */}
         <div style={{ ...styles.headerFlex, flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", gap: isMobile ? 20 : 0 }}>
           <div style={{ display: "flex", gap: "15px", alignItems: "flex-start" }}>
-            {/* Aksen emas berdiri */}
             <div style={{ width: "6px", backgroundColor: "#b08d00", alignSelf: "stretch", borderRadius: "2px" }}></div>
             <div>
               <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>
@@ -133,7 +134,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* --- QR SECTION --- */}
         {qrUrl && (
           <div style={{ ...styles.qrTopGrid, gridTemplateColumns: isMobile ? "1fr" : "380px 1fr" }}>
             <div style={styles.qrBoxCard}>
@@ -169,7 +169,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* --- DAFTAR POS SECTION DENGAN HEADER HIJAU & AKSEN EMAS --- */}
         <div style={styles.mainCard}>
           <div style={styles.cardHeaderStyle}>
             <strong>📝 Daftar Pos Patroli Aktif</strong>
@@ -194,7 +193,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* --- STATISTICS CARDS --- */}
         <div style={{ ...styles.statsGrid, gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr" }}>
           <div style={styles.statsCard}>
             <div style={styles.statsIconGreen}>✔</div>
@@ -215,7 +213,6 @@ export default function AdminDashboard() {
         </footer>
       </div>
 
-      {/* --- MODAL KONFIRMASI HAPUS --- */}
       {showDeleteModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
@@ -232,7 +229,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* --- FLOATING NOTIFICATION --- */}
       {notif.show && (
         <div style={{ ...styles.notifToast, backgroundColor: notif.status === "success" ? "#064e3b" : "#be123c" }}>
           {notif.status === "success" ? "✅" : "❌"} {notif.message}
@@ -257,25 +253,8 @@ const styles = {
   posInfoDetail: { display: "flex", alignItems: "center", gap: 15, padding: "15px", backgroundColor: "#f8fafc", borderRadius: 12 },
   iconMarker: { fontSize: 18 },
   tokenBox: { padding: "15px", backgroundColor: "#f8fafc", borderRadius: 12, border: "1px solid #f1f5f9" },
-  
-  // Perbaikan Header Daftar Pos (Halaman Utama Dashboard)
-  mainCard: { 
-    backgroundColor: "#fff", 
-    borderRadius: "16px", 
-    boxShadow: "0 4px 6px rgba(0,0,0,0.05)", 
-    border: "1px solid #f1f5f9", 
-    marginBottom: 30,
-    overflow: "hidden" 
-  },
-  cardHeaderStyle: { 
-    padding: "15px 25px", 
-    backgroundColor: "#064e3b", // Background hijau
-    borderTop: "6px solid #b08d00", // Aksen emas atas
-    color: "#fff", // Teks putih agar terbaca di hijau
-    display: "flex",
-    alignItems: "center"
-  },
-  
+  mainCard: { backgroundColor: "#fff", borderRadius: "16px", boxShadow: "0 4px 6px rgba(0,0,0,0.05)", border: "1px solid #f1f5f9", marginBottom: 30, overflow: "hidden" },
+  cardHeaderStyle: { padding: "15px 25px", backgroundColor: "#064e3b", borderTop: "6px solid #b08d00", color: "#fff", display: "flex", alignItems: "center" },
   listItem: { display: "flex", justifyContent: "space-between", padding: "15px 0", borderBottom: "1px solid #f8fafc" },
   iconBox: { width: 40, height: 40, backgroundColor: "#f8fafc", borderRadius: 10, display: "flex", justifyContent: "center", alignItems: "center" },
   btnActionGreen: { backgroundColor: "#064e3b", color: "#fff", border: "none", padding: "8px 15px", borderRadius: 8, fontWeight: "700", fontSize: 12 },
