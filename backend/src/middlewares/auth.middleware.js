@@ -3,11 +3,7 @@ const jwt = require("jsonwebtoken");
 const env = require("../config/env");
 const usersRepo = require("../repositories/users.repo");
 
-/**
- * Middleware: require login (JWT).
- * Header: Authorization: Bearer <token>
- */
-module.exports = async function authMiddleware(req, res, next) {
+const authMiddleware = async (req, res, next) => {
   try {
     const header = req.headers.authorization || "";
     const [type, token] = header.split(" ");
@@ -17,15 +13,14 @@ module.exports = async function authMiddleware(req, res, next) {
     }
 
     const payload = jwt.verify(token, env.JWT_SECRET);
-
-    // Ambil user terbaru dari DB (role & active bisa berubah)
     const user = await usersRepo.findById(payload.id);
+    
     if (!user) return res.status(401).json({ message: "Unauthorized: user tidak ditemukan" });
 
     req.user = {
       id: user.id,
       name: user.name,
-      role: user.role,
+      role: user.role.toLowerCase().trim(),
       is_active: Boolean(user.is_active),
     };
 
@@ -34,3 +29,6 @@ module.exports = async function authMiddleware(req, res, next) {
     return res.status(401).json({ message: "Unauthorized: token invalid/expired" });
   }
 };
+
+// ✅ EXPORT LANGSUNG (Biar tidak error saat di-require)
+module.exports = authMiddleware;

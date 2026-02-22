@@ -1,74 +1,59 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import api from "../api/axios";
 
-const AuthContext = createContext(null);
+const AuthContext = createContext();
 
-export function AuthProvider({ children }) {
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchMe = async () => {
+  // Fungsi untuk memvalidasi token yang tersimpan
+  const checkAuth = async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return null;
+    if (token) {
+      try {
+        const res = await api.get("/auth/me");
+        setUser(res.data.user);
+      } catch (err) {
+        localStorage.removeItem("token");
+        setUser(null);
+      }
     }
-
-    try {
-      const res = await api.get("/auth/me");
-      const me = res.data?.user ?? res.data; // support {user:{...}} atau langsung {...}
-      setUser(me || null);
-      setLoading(false);
-      return me || null;
-    } catch (e) {
-      localStorage.removeItem("token");
-      setUser(null);
-      setLoading(false);
-      return null;
-    }
+    setLoading(false);
   };
 
   useEffect(() => {
-    fetchMe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    checkAuth();
   }, []);
 
   const login = async (username, password) => {
-    const res = await api.post("/auth/login", { username, password });
-
-    const token = res.data?.token;
-    if (!token) throw new Error("Token tidak ditemukan dari response /auth/login");
-
-    localStorage.setItem("token", token);
-    await fetchMe();
-    return res.data;
+    try {
+      const res = await api.post("/auth/login", { username, password });
+      
+      // ✅ SIMPAN TOKEN
+      localStorage.setItem("token", res.data.token);
+      
+      // ✅ PAKSA UPDATE STATE USER DENGAN DATA TERBARU DARI DATABASE
+      setUser(res.data.user);
+      
+      return res.data;
+    } catch (err) {
+      throw err;
+    }
   };
 
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
+    window.location.href = "/login";
   };
 
-  const value = useMemo(
-    () => ({
-      user,
-      loading,
-      login,
-      logout,
-      refreshMe: fetchMe,
-      setUser, // optional kalau kamu butuh
-    }),
-    [user, loading]
+  return (
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
+      {/* Jangan render apapun sampai pengecekan auth selesai agar tidak mental */}
+      {!loading && children}
+    </AuthContext.Provider>
   );
+};
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuthContext() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuthContext harus dipakai di dalam <AuthProvider>");
-  }
-  return ctx;
-}
+export const useAuthContext = () => useContext(AuthContext);

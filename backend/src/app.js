@@ -1,43 +1,42 @@
-// src/app.js
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
 
 const env = require("./config/env");
-const routes = require("./routes");
+const routes = require("./routes"); 
 const { pingDb } = require("./config/db");
-
+const missionRoutes = require("./routes/missions.routes");
 const app = express();
 
-// ✅ CORS (boleh lebih ketat kalau mau)
 app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "http://192.168.0.106:5173", // IP saat ini
-      /^http:\/\/192\.168\.0\.\d{1,3}:5173$/ // Mengizinkan semua IP 192.168.0.xxx
+      "http://192.168.18.75:5173", 
+      /^http:\/\/192\.168\.0\.\d{1,3}:5173$/ 
     ],
     credentials: true,
   })
 );
 
-// Body parser
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-/**
- * ✅ Static file untuk foto upload
- * Kalau UPLOAD_DIR = "uploads/patrol_photos"
- * maka URL jadi:
- * http://localhost:3000/uploads/patrol_photos/namafile.jpg
- */
 app.use(
   "/uploads",
   express.static(path.resolve(process.cwd(), "uploads"))
 );
 
-// Routes
-app.use("/", routes);
+/**
+ * ✅ 1. DAFTARKAN RUTE MISI DI SINI (SEBELUM 404)
+ * Pindahkan baris ini ke atas agar terbaca oleh Express
+ */
+app.use("/api/missions", missionRoutes); 
+
+/**
+ * ✅ 2. DAFTARKAN RUTE UTAMA LAINNYA
+ */
+app.use("/", routes); 
 
 // Health check
 app.get("/health", async (req, res) => {
@@ -49,7 +48,9 @@ app.get("/health", async (req, res) => {
   }
 });
 
-// 404 handler
+/**
+ * ❌ 3. 404 handler HARUS SELALU PALING BAWAH
+ */
 app.use((req, res) => {
   res.status(404).json({ message: "Route tidak ditemukan" });
 });
@@ -57,7 +58,6 @@ app.use((req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   const msg = err?.message || "Internal Server Error";
-  // kalau error punya statusCode, pakai itu
   const code = err?.statusCode || 500;
   res.status(code).json({ message: msg });
 });

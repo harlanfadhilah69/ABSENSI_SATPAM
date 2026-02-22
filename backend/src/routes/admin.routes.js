@@ -8,41 +8,51 @@ const active = require("../middlewares/active.middleware");
 
 const postsController = require("../controllers/admin/posts.controller");
 const reportsController = require("../controllers/admin/reports.controller");
-// ✅ Import Controller baru untuk User
 const usersController = require("../controllers/admin/users.controller");
 
-// middleware chain biar tidak ngulang-ngulang
+// ✅ JALUR 1: Jalur untuk Melihat (Admin & Viewer Boleh Masuk)
+// Digunakan untuk fungsi GET/Membaca data
+const canView = [auth, role(["admin", "viewer"]), active];
+
+// ✅ JALUR 2: Jalur untuk Eksekusi (Hanya Admin yang Boleh)
+// Digunakan untuk fungsi Create, Update, Delete
 const adminOnly = [auth, role(["admin"]), active];
 
-// ======================
-// POS (admin)
-// ======================
-router.get("/posts", ...adminOnly, postsController.list);
+// ==========================================
+// 🏢 MANAJEMEN POS (Admin & Viewer)
+// ==========================================
+
+// Admin & Viewer boleh melihat daftar dan detail pos
+router.get("/posts", ...canView, postsController.list);
+router.get("/posts/:id", ...canView, postsController.getPostById);
+
+// HANYA Admin yang boleh memodifikasi data pos
 router.post("/posts", ...adminOnly, postsController.create);
 router.put("/posts/:id", ...adminOnly, postsController.update);
 router.delete("/posts/:id", ...adminOnly, postsController.remove);
 router.get("/posts/:id/qr", ...adminOnly, postsController.qrLink);
-router.get("/posts/:id", postsController.getPostById);
 
-// ======================
-// REPORTS (admin)
-// ======================
-router.get("/reports", ...adminOnly, reportsController.listLogs);
+// ==========================================
+// 📄 LAPORAN PATROLI (Admin & Viewer)
+// ==========================================
+
+// Admin & Viewer boleh melihat laporan
+router.get("/reports", ...canView, reportsController.listLogs);
+
+// HANYA Admin yang boleh menghapus histori laporan
 router.delete("/reports/:id", ...adminOnly, reportsController.deleteLog);
 
-// ======================
-// ✅ USERS (admin) - FITUR BARU
-// ======================
-// Mendapatkan semua daftar user
-router.get("/users", ...adminOnly, usersController.list);
+// ==========================================
+// 👥 KELOLA USER (Admin & Viewer)
+// ==========================================
 
-// Mengubah role (Admin <=> Satpam)
+// Admin & Viewer boleh melihat daftar user
+router.get("/users", ...canView, usersController.list);
+
+// HANYA Admin yang boleh mengelola akun (Tambah, Ganti Role, Reset Password, Hapus)
+router.post("/users", ...adminOnly, usersController.create);
 router.put("/users/:id/role", ...adminOnly, usersController.updateRole);
-
-// Reset password user oleh admin
 router.put("/users/:id/password", ...adminOnly, usersController.resetPassword);
-
-// Menghapus akun user
 router.delete("/users/:id", ...adminOnly, usersController.remove);
 
 module.exports = router;

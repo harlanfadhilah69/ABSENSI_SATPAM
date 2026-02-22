@@ -3,6 +3,7 @@ const Post = require("../models/post.model");
 
 exports.list = async () => {
   const pool = await getPool();
+  // Ambil semua kolom termasuk lat dan lng
   const [rows] = await pool.query(
     "SELECT * FROM posts ORDER BY created_at DESC"
   );
@@ -12,23 +13,24 @@ exports.list = async () => {
 exports.findById = async (id) => {
   const pool = await getPool();
   const [rows] = await pool.query(
-    "SELECT * FROM posts WHERE id = ? LIMIT 1",
+    "SELECT * FROM posts WHERE id = ? LIMIT 1", // ✅ Simbol * akan mengambil lat dan lng
     [id]
   );
   return rows.length ? new Post(rows[0]) : null;
 };
 
-exports.create = async ({ post_name, location_desc }) => {
+// ✅ PERBAIKAN: Tambahkan lat dan lng agar bisa disimpan ke DB
+exports.create = async ({ post_name, location_desc, lat, lng }) => {
   const pool = await getPool();
-  // ✅ PERBAIKAN: Hapus koma ekstra dan tambahkan is_active di bagian kolom
   const [result] = await pool.query(
-    `INSERT INTO posts (post_name, location_desc, is_active)
-     VALUES (?, ?, 1)`,
-    [post_name, location_desc]
+    `INSERT INTO posts (post_name, location_desc, lat, lng, is_active)
+     VALUES (?, ?, ?, ?, 1)`,
+    [post_name, location_desc, lat || null, lng || null]
   );
   return this.findById(result.insertId);
 };
 
+// ✅ PERBAIKAN: Tambahkan logika update untuk koordinat
 exports.update = async (id, payload) => {
   const fields = [];
   const values = [];
@@ -44,6 +46,15 @@ exports.update = async (id, payload) => {
   if (payload.is_active !== undefined) {
     fields.push("is_active = ?");
     values.push(payload.is_active ? 1 : 0);
+  }
+  // Tambahkan pengecekan lat dan lng
+  if (payload.lat !== undefined) {
+    fields.push("lat = ?");
+    values.push(payload.lat);
+  }
+  if (payload.lng !== undefined) {
+    fields.push("lng = ?");
+    values.push(payload.lng);
   }
 
   if (!fields.length) return this.findById(id);

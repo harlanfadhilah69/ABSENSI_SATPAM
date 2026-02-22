@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode"; 
 import api from "../../api/axios";
-// ✅ Import logo patroli
 import logoImg from "../../assets/logo_patroli.png";
 
 export default function Scan() {
@@ -18,70 +17,58 @@ export default function Scan() {
   const html5QrCodeRef = useRef(null);
   const isCameraRunning = useRef(false);
 
-  // --- LOGIKA 1: PROSES DATA ---
   useEffect(() => {
     if (urlPostId && urlToken) {
-        stopCamera();
         processScan(urlPostId, urlToken);
     }
   }, [urlPostId, urlToken]);
 
-  // ✅ PROSES SCAN DENGAN OPTIMASI GPS AKURASI TINGGI
   const processScan = async (pid, tok) => {
-    setStatus("⏳ Mengunci GPS Akurat..."); // Status baru agar satpam menunggu GPS lock
+    setStatus("⏳ Mengunci GPS Akurat..."); 
     await stopCamera(); 
 
-    // Fungsi internal untuk mendapatkan koordinat presisi tinggi
     const getPreciseLocation = () => {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve(null);
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) return resolve(null);
+        let watchId;
+        let bestCoords = null;
+        let timer;
 
-    let watchId;
-    let bestCoords = null;
-    let timer;
+        watchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            const coords = pos.coords;
+            if (!bestCoords || coords.accuracy < bestCoords.accuracy) {
+              bestCoords = coords;
+            }
+            if (coords.accuracy <= 10) {
+              clearTimeout(timer);
+              navigator.geolocation.clearWatch(watchId);
+              resolve(coords);
+            }
+          },
+          () => {}, 
+          { enableHighAccuracy: true, maximumAge: 0 }
+        );
 
-    // Kita pantau lokasi selama 5 detik untuk mencari yang TERBAIK
-    watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const coords = pos.coords;
-        // Simpan koordinat jika ini yang paling akurat sejauh ini
-        if (!bestCoords || coords.accuracy < bestCoords.accuracy) {
-          bestCoords = coords;
-        }
-        
-        // Jika akurasi sudah sangat bagus (di bawah 10 meter), langsung stop dan pakai ini
-        if (coords.accuracy <= 10) {
-          clearTimeout(timer);
+        timer = setTimeout(() => {
           navigator.geolocation.clearWatch(watchId);
-          resolve(coords);
-        }
-      },
-      () => {}, // Abaikan error sementara saat proses pencarian
-      { enableHighAccuracy: true, maximumAge: 0 }
-    );
-
-    // Batasi waktu pencarian maksimal 7 detik agar satpam tidak menunggu terlalu lama
-    timer = setTimeout(() => {
-      navigator.geolocation.clearWatch(watchId);
-      resolve(bestCoords); // Kembalikan koordinat terbaik yang sempat didapat
-    }, 7000);
-  });
-};
+          resolve(bestCoords); 
+        }, 7000);
+      });
+    };
 
     try {
-      // Ambil GPS terlebih dahulu sebelum verifikasi token ke API
       const coords = await getPreciseLocation();
       const accuracyParam = coords ? `&acc=${coords.accuracy}` : "";
-
-      // Verifikasi data ke backend
+      
+      // ✅ Validasi Token ke Backend
       await api.get(`/patrol/scan?post_id=${pid}&token=${tok}${accuracyParam}`);
       setStatus("✅ BERHASIL! Masuk...");
       
+      // ✅ NAVIGASI KE HALAMAN PATROLI
       setTimeout(() => {
-        // Pindah ke halaman submit dengan membawa parameter akurasi
-        window.location.href = `/satpam/patrol?post_id=${pid}&token=${tok}${accuracyParam}`;
+        nav(`/satpam/patrol?post_id=${pid}&token=${tok}${accuracyParam}`, { replace: true });
       }, 1000);
-
     } catch (e) {
       setStatus("❌ Gagal: " + (e?.response?.data?.message || "Token Invalid"));
     }
@@ -97,7 +84,6 @@ export default function Scan() {
       }
   };
 
-  // --- LOGIKA 2: KAMERA ---
   useEffect(() => {
     if (urlPostId || urlToken) return;
     let isProcessingQR = false; 
@@ -133,7 +119,8 @@ export default function Scan() {
                                 const pid = urlObj.searchParams.get("post_id");
                                 const tok = urlObj.searchParams.get("token");
                                 if (pid && tok) {
-                                    nav(`/scan?post_id=${pid}&token=${tok}`, { replace: true });
+                                    // ✅ PERBAIKAN: Arahkan ke /satpam/scan bukan /scan
+                                    nav(`/satpam/scan?post_id=${pid}&token=${tok}`, { replace: true });
                                 }
                             } catch (err) {}
                         }
@@ -162,23 +149,20 @@ export default function Scan() {
   const handleManualSubmit = (e) => {
     e.preventDefault();
     if (manualId) {
-        // ✅ Panggil processScan agar melewati validasi GPS Akurat & Backend
         processScan(manualId, "manual_entry");
     }
   };
 
   return (
     <div style={styles.containerStyle}>
-      {/* HEADER LOGO */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <div style={styles.logoCircle}>
+        <div style={styles.logoWrapper}>
           <img src={logoImg} alt="Logo RS" style={styles.logoImageStyle} />
         </div>
         <h1 style={styles.titleStyle}>RS ISLAM FATIMAH</h1>
         <p style={styles.subtitleStyle}>SISTEM PATROLI KEAMANAN</p>
       </div>
 
-      {/* MAIN CARD SCAN */}
       <div style={styles.formCard}>
         <h2 style={styles.cardTitle}>Scan QR Pos</h2>
         <p style={styles.cardSubtitle}>Pindai kode QR pada titik patroli untuk verifikasi lokasi</p>
@@ -190,13 +174,10 @@ export default function Scan() {
           </div>
         ) : (
           <>
-            {/* AREA SCANNER */}
             <div style={styles.cameraWrapper}>
                 <div id="reader" style={{ width: "100%", height: "100%" }}></div>
-                {/* Overlay Corner Dekorasi */}
                 <div style={styles.cornerTL}></div><div style={styles.cornerTR}></div>
                 <div style={styles.cornerBL}></div><div style={styles.cornerBR}></div>
-                {/* Animasi Scanning Line */}
                 <div className="scan-line"></div>
             </div>
             
@@ -208,7 +189,6 @@ export default function Scan() {
                 <span style={styles.dividerText}>ATAU</span>
             </div>
 
-            {/* INPUT MANUAL */}
             <div style={styles.manualSection}>
                 <label style={styles.labelStyle}>ID POS PATROLI</label>
                 <form onSubmit={handleManualSubmit} style={{ display: 'flex', gap: 10, marginTop: 8 }}>
@@ -232,7 +212,6 @@ export default function Scan() {
         )}
       </div>
 
-      {/* FOOTER */}
       <div style={styles.footerMenu}>
           <span>Pusat Bantuan</span>
           <span>Konfigurasi</span>
@@ -240,7 +219,6 @@ export default function Scan() {
       </div>
       <p style={styles.copyright}>© 2026 RS Islam Fatimah. Dikembangkan untuk Keamanan & Ketertiban.</p>
 
-      {/* CSS untuk Animasi Line Scan agar tidak menyebabkan putih */}
       <style>{`
         @keyframes scan {
           0% { top: 10%; }
@@ -261,11 +239,10 @@ export default function Scan() {
   );
 }
 
-// --- DEFINISI STYLES ---
 const styles = {
   containerStyle: { backgroundColor: "#fcfdfe", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px", fontFamily: "'Inter', sans-serif" },
-  logoCircle: { width: "80px", height: "80px", backgroundColor: "#064e3b", borderRadius: "18px", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 10px", boxShadow: "0 8px 16px rgba(6, 78, 59, 0.2)" },
-  logoImageStyle: { width: "60%", height: "60%", objectFit: "contain" },
+  logoWrapper: { width: "65px", height: "65px", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 10px" },
+  logoImageStyle: { width: "150%", height: "150%", objectFit: "contain" },
   titleStyle: { fontSize: "20px", fontWeight: "800", color: "#064e3b", margin: "0", letterSpacing: "1px" },
   subtitleStyle: { fontSize: "10px", fontWeight: "600", color: "#b08d00", margin: "5px 0 0 0", letterSpacing: "2px" },
   formCard: { maxWidth: "480px", width: "100%", padding: "40px 30px", borderRadius: "35px", background: "white", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.08)", marginTop: "25px", position: "relative", border: "1px solid #f0f0f0" },

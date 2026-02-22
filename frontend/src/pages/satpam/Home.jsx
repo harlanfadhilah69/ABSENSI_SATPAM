@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../api/axios";
 import SatpamNavbar from "../../components/satpam/SatpamNavbar";
+// ✅ IMPORT useNavigate untuk pindah halaman
+import { useNavigate } from "react-router-dom";
 
 export default function SatpamHome() {
+  const navigate = useNavigate(); //
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [pos, setPos] = useState(""); 
@@ -10,7 +13,9 @@ export default function SatpamHome() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [selectedImg, setSelectedImg] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
@@ -55,26 +60,11 @@ export default function SatpamHome() {
     }
   };
 
-  // ✅ PERBAIKAN BUG RESET (Langsung tarik data tanpa filter)
   const handleReset = async () => {
-    // 1. Kosongkan state input
     setDateFrom("");
     setDateTo("");
     setPos("");
-
-    // 2. Tarik data ulang dengan parameter kosong
-    setLoading(true);
-    try {
-      const res = await api.get("/satpam/patrol/logs", { 
-        params: { date_from: "", date_to: "", pos: "" } 
-      });
-      setRows(res.data?.data || []);
-      setCurrentPage(1);
-    } catch (e) {
-      setMsg("Gagal mereset data");
-    } finally {
-      setLoading(false);
-    }
+    fetchLogs();
   };
 
   useEffect(() => { fetchLogs(); }, []);
@@ -90,14 +80,28 @@ export default function SatpamHome() {
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: isMobile ? "20px 15px" : "30px 20px" }}>
         
-        {/* REFRESH SECTION */}
+        {/* ✅ TOMBOL NAVIGASI MENUJU MISI PATROLI */}
+        <div 
+          onClick={() => navigate("/satpam/missions")}
+          style={styles.missionLinkCard}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div style={styles.missionIconBg}>🛡️</div>
+            <div>
+              <h4 style={{ margin: 0, color: '#064e3b', fontSize: '16px' }}>Misi Patroli Hari Ini</h4>
+              <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>Cek daftar checkpoint harian Anda</p>
+            </div>
+          </div>
+          <span style={{ fontSize: '20px', color: '#064e3b' }}>➜</span>
+        </div>
+
         <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'flex-end' }}>
              <button onClick={fetchLogs} style={styles.btnRefresh}>
                 {loading ? "..." : "🔄 Refresh Data"}
             </button>
         </div>
 
-        {/* FILTER SECTION */}
+        {/* --- FILTER SECTION --- */}
         <div style={styles.cardContainer}>
           <div style={styles.cardHeaderHijau}>
               <span style={{marginRight: 8}}>⏳</span> Filter Histori
@@ -124,13 +128,12 @@ export default function SatpamHome() {
               </div>
               <div style={{ display: 'flex', gap: 10, width: isMobile ? '100%' : 'auto' }}>
                   <button onClick={fetchLogs} style={{...styles.btnCari, flex: isMobile ? 1 : 'none'}}>Cari</button>
-                  {/* ✅ MENGGUNAKAN handleReset AGAR TABEL LANGSUNG KEMBALI NORMAL */}
                   <button onClick={handleReset} style={{...styles.btnReset, flex: isMobile ? 1 : 'none'}}>Reset</button>
               </div>
           </div>
         </div>
 
-        {/* HISTORI SECTION */}
+        {/* --- TABLE SECTION --- */}
         <div style={styles.cardContainer}>
             <div style={styles.cardHeaderHijau}>
                 <span style={{marginRight: 8}}>📋</span> Histori Patroli Saya
@@ -163,7 +166,7 @@ export default function SatpamHome() {
                         </button>
                       )}
                       {r.photo_path && (
-                        <button onClick={() => window.open(fotoUrl(r.photo_path))} style={styles.btnActionMobile}>
+                        <button onClick={() => setSelectedImg(fotoUrl(r.photo_path))} style={styles.btnActionMobile}>
                           📷 Lihat Foto
                         </button>
                       )}
@@ -201,7 +204,12 @@ export default function SatpamHome() {
                             </td>
                             <td align="center" style={styles.tdStyle}>
                                 {r.photo_path ? (
-                                    <img src={fotoUrl(r.photo_path)} alt="foto" style={styles.imgThumb} onClick={() => window.open(fotoUrl(r.photo_path))} />
+                                    <img 
+                                      src={fotoUrl(r.photo_path)} 
+                                      alt="foto" 
+                                      style={styles.imgThumb} 
+                                      onClick={() => setSelectedImg(fotoUrl(r.photo_path))} 
+                                    />
                                 ) : "-"}
                             </td>
                         </tr>
@@ -211,6 +219,7 @@ export default function SatpamHome() {
               </div>
             )}
 
+            {/* Pagination remains the same */}
             {rows.length > 0 && (
               <div style={styles.paginationArea}>
                 <div style={styles.pageInfo}>
@@ -226,8 +235,23 @@ export default function SatpamHome() {
               </div>
             )}
         </div>
-
       </div>
+
+      {/* --- MODAL SECTION --- */}
+      {selectedImg && (
+        <div style={styles.modalOverlayImg} onClick={() => setSelectedImg(null)}>
+          <div style={styles.modalContentImg} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeaderImg}>
+              <span style={{fontWeight: '800', fontSize: '14px'}}>Pratinjau Foto Patroli</span>
+              <button onClick={() => setSelectedImg(null)} style={styles.btnCloseImg}>✕</button>
+            </div>
+            <div style={styles.modalBodyImg}>
+              <img src={selectedImg} alt="Patrol Full" style={styles.fullImg} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <footer style={{textAlign: 'center', padding: '20px', color: '#94a3b8', fontSize: '12px'}}>
           © 2026 <b>RS Islam Fatimah</b>. Security Patrol Monitoring.
       </footer>
@@ -236,6 +260,18 @@ export default function SatpamHome() {
 }
 
 const styles = {
+  // ✅ STYLES UNTUK KARTU LINK MISI
+  missionLinkCard: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '20px', backgroundColor: '#fff', borderRadius: '18px',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '25px',
+    cursor: 'pointer', border: '1.5px solid #ecfdf5', transition: 'all 0.2s'
+  },
+  missionIconBg: {
+    width: '45px', height: '45px', backgroundColor: '#ecfdf5', borderRadius: '12px',
+    display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '24px'
+  },
+
   cardContainer: { backgroundColor: "#fff", borderRadius: "18px", overflow: 'hidden', boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", marginBottom: 25 },
   cardHeaderHijau: { padding: '15px 20px', backgroundColor: '#064e3b', borderTop: '6px solid #b08d00', fontWeight: '800', color: '#fff', fontSize: '15px', display: 'flex', alignItems: 'center' },
   inputContainer: { display: 'flex', flexDirection: 'column', gap: '5px' },
@@ -261,4 +297,10 @@ const styles = {
   pageButtons: { display: "flex", gap: "5px", alignItems: "center" },
   pageBtn: { border: "none", width: "32px", height: "32px", borderRadius: "10px", cursor: "pointer", fontSize: "12px", fontWeight: "800" },
   navBtn: { border: "none", background: "transparent", color: "#94a3b8", fontSize: "22px", cursor: "pointer" },
+  modalOverlayImg: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 },
+  modalContentImg: { backgroundColor: '#064e3b', borderRadius: '24px', width: '90%', maxWidth: '650px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' },
+  modalHeaderImg: { padding: '15px 25px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' },
+  btnCloseImg: { background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'white' },
+  modalBodyImg: { padding: '15px', backgroundColor: '#f8fafc' },
+  fullImg: { width: '100%', height: 'auto', maxHeight: '70vh', borderRadius: '15px', objectFit: 'contain', display: 'block' },
 };

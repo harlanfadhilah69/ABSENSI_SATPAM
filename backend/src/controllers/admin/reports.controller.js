@@ -1,11 +1,15 @@
-// src/controllers/admin/reports.controller.js
+// ✅ Import repository untuk interaksi dengan database
 const patrolLogsRepo = require("../../repositories/patrolLogs.repo");
 
-// GET /admin/reports
+/**
+ * GET /admin/reports
+ * Menampilkan daftar laporan patroli berdasarkan filter
+ */
 exports.listLogs = async (req, res, next) => {
   try {
     const { date_from, date_to, post_id, user_id, satpam, pos } = req.query;
 
+    // Mengambil data dari repo dengan parameter filter
     const logs = await patrolLogsRepo.list({
       dateFrom: date_from,
       dateTo: date_to,
@@ -21,12 +25,15 @@ exports.listLogs = async (req, res, next) => {
   }
 };
 
-// DELETE /admin/reports/:id
+/**
+ * DELETE /admin/reports/:id
+ * Menghapus log patroli (Admin Only)
+ */
 exports.deleteLog = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // removeById() -> affectedRows (angka)
+    // Eksekusi hapus lewat repository
     const affected = await patrolLogsRepo.removeById(id);
 
     if (!affected) {

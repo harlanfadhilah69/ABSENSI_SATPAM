@@ -34,16 +34,24 @@ export default function Login() {
     setLoading(true);
 
     try {
+      // ✅ Ambil hasil login langsung dari response API
       const res = await login(username, password);
-      const role = res.user?.role;
+      
+      // ✅ Normalisasi role: hilangkan spasi hantu dan jadikan huruf kecil
+      const role = res.user?.role?.toLowerCase().trim();
 
       if (redirect) {
         nav(decodeURIComponent(redirect), { replace: true });
         return;
       }
 
-      if (role === "admin") nav("/admin/dashboard");
-      else nav("/satpam");
+      // ✅ LOGIKA NAVIGASI: Admin & Viewer masuk ke area Admin
+      if (role === "admin" || role === "viewer") {
+        nav("/admin/dashboard");
+      } else {
+        // Satpam tetap diarahkan ke halaman khusus satpam
+        nav("/satpam");
+      }
     } catch (err) {
       setMsg(err?.response?.data?.message || "Login gagal, periksa kembali kredensial Anda");
     } finally {
@@ -85,7 +93,6 @@ export default function Login() {
           <div style={styles.inputGroup}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <label style={styles.label}>Password</label>
-              {/* ✅ Fungsi Klik Lupa Password */}
               <span onClick={() => setShowForgotModal(true)} style={styles.forgotPass}>
                 Lupa password?
               </span>
@@ -122,7 +129,6 @@ export default function Login() {
         </div>
       </div>
 
-      {/* ✅ MODAL POPUP LUPA PASSWORD MENARIK */}
       {showForgotModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
@@ -172,8 +178,6 @@ const styles = {
   footerLink: { marginTop: "25px", textAlign: "center", fontSize: "14px", color: "#64748b" },
   linkText: { color: "#b08d00", textDecoration: "none", fontWeight: "700" },
   copyright: { marginTop: "30px", fontSize: "10px", color: "#94a3b8", textAlign: "center", letterSpacing: "0.5px" },
-
-  // --- STYLES MODAL BARU ---
   modalOverlay: { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 3000 },
   modalContent: { backgroundColor: "#fff", width: "90%", maxWidth: "380px", borderRadius: "24px", textAlign: "center", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", overflow: "hidden", position: "relative", padding: "40px 30px" },
   modalAksenEmas: { position: "absolute", top: 0, left: 0, width: "100%", height: "6px", backgroundColor: "#b08d00" },

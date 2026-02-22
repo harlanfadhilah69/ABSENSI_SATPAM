@@ -1,8 +1,10 @@
 const postsRepo = require("../repositories/posts.repo");
 const patrolService = require("../services/patrol.service");
 const tokenService = require("../services/token.service");
+// ✅ IMPORT CONTROLLER MISI UNTUK UPDATE STATUS
+const missionsController = require("./missions.controller");
 
-// ✅ 1. FUNGSI SCAN (DIPERBAIKI)
+// ✅ 1. FUNGSI SCAN
 exports.scan = async (req, res, next) => {
   try {
     const { post_id, token } = req.query;
@@ -11,13 +13,11 @@ exports.scan = async (req, res, next) => {
       return res.status(400).json({ message: "post_id dan token wajib ada" });
     }
 
-    // Cek apakah pos ada di database
     const post = await postsRepo.findById(post_id);
     if (!post || !post.is_active) {
       return res.status(404).json({ message: "Pos tidak ditemukan / tidak aktif" });
     }
 
-    // ✅ LOGIKA BARU: Jika token adalah "manual_entry", langsung loloskan
     if (token === "manual_entry") {
       return res.json({
         message: "Mode input manual aktif",
@@ -25,7 +25,6 @@ exports.scan = async (req, res, next) => {
       });
     }
 
-    // Validasi Token QR Asli
     const valid = tokenService.validateToken({ postId: post_id, token });
     if (!valid) {
       return res.status(401).json({ message: "Token QR tidak valid" });
@@ -42,11 +41,10 @@ exports.scan = async (req, res, next) => {
 };
 
 
-// ✅ 2. FUNGSI SUBMIT (DIPERBAIKI)
-// Ganti bagian exports.submit di Patrol.controller.js:
+// ✅ 2. FUNGSI SUBMIT (DIPERBAIKI DENGAN LOGIKA MISI)
 exports.submit = async (req, res, next) => {
   try {
-    const user = req.user;
+    const user = req.user; // Diambil dari middleware
     const { post_id, token, note, lat, lng, accuracy } = req.body;
 
     if (!post_id) {
@@ -69,11 +67,11 @@ exports.submit = async (req, res, next) => {
       }
     }
 
-    // ✅ Parsing GPS dengan presisi lebih baik
     const parsedLat = lat ? parseFloat(lat) : null;
     const parsedLng = lng ? parseFloat(lng) : null;
     const parsedAcc = accuracy ? parseFloat(accuracy) : null;
 
+    // Simpan Log Patroli ke Database
     const result = await patrolService.createPatrolLog({
       userId: user.id,
       postId: post_id,
@@ -82,11 +80,15 @@ exports.submit = async (req, res, next) => {
       deviceInfo: req.headers["user-agent"] || "",
       lat: parsedLat,
       lng: parsedLng,
-      accuracy: parsedAcc, // ✅ Tersimpan ke DB
+      accuracy: parsedAcc,
     });
 
+    // ✅ LOGIKA SINKRONISASI: Tandai misi sebagai 'completed' di tabel missions
+    // Kita panggil fungsi completeMission yang sudah kita buat di missions.controller
+    await missionsController.completeMission(user.id, post_id);
+
     res.status(201).json({
-      message: "Patroli berhasil disimpan",
+      message: "Patroli berhasil disimpan dan misi diperbarui! ✅",
       data: result,
     });
   } catch (err) {

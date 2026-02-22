@@ -3,6 +3,7 @@ import api from "../../api/axios";
 import AdminNavbar from "../../components/admin/AdminNavbar";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx"; // ✅ Import library Excel
 
 export default function Reports() {
   const [dateFrom, setDateFrom] = useState("");
@@ -14,6 +15,8 @@ export default function Reports() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
+  const [selectedImg, setSelectedImg] = useState(null); 
+
   const [notif, setNotif] = useState({ show: false, status: "", message: "" });
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -65,44 +68,57 @@ export default function Reports() {
     }
   };
 
-  // ✅ FUNGSI RESET YANG DIPERBAIKI (BUG FIX & AUTO-FETCH)
   const handleReset = async () => {
-    // 1. Bersihkan State Input
     setDateFrom("");
     setDateTo("");
     setSatpam("");
     setPos("");
+    fetchData();
+  };
 
-    // 2. Langsung tarik data tanpa filter agar tabel kembali normal
-    setLoading(true);
+  // ✅ FUNGSI EXPORT EXCEL (MENGGANTIKAN EXPORT ALL PDF)
+  const exportToExcel = () => {
     try {
-      const res = await api.get("/admin/reports", { 
-        params: { date_from: "", date_to: "", satpam: "", pos: "" } 
-      });
-      setRows(res.data?.data || []);
-      setCurrentPage(1);
-    } catch (e) {
-      showNotif("error", "Gagal mereset data");
-    } finally {
-      setLoading(false);
+      if (rows.length === 0) return showNotif("error", "Tidak ada data untuk di-export");
+
+      // Format data untuk Excel
+      const excelData = rows.map((r, i) => ({
+        "No": i + 1,
+        "Waktu Patroli": formatDateTime(r.captured_at_server || r.created_at),
+        "Nama Satpam": r.satpam_name || r.username || "-",
+        "Titik Pos": r.post_name || "-",
+        "Catatan Laporan": r.note || "Aman",
+        "Koordinat GPS": r.lat ? `${r.lat}, ${r.lng}` : "Tidak Ada GPS",
+        "Akurasi (m)": Math.round(r.accuracy || 0)
+      }));
+
+      // Proses Worksheet
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan_Patroli");
+
+      // Download File
+      XLSX.writeFile(workbook, `Laporan_Patroli_RSIFC_${new Date().toISOString().split('T')[0]}.xlsx`);
+      showNotif("success", "Laporan Excel berhasil diunduh!");
+    } catch (err) {
+      showNotif("error", "Gagal ekspor ke Excel");
     }
   };
 
-  const exportPDF = (isCurrentPageOnly = false) => {
+  const exportPDF = () => {
     const doc = jsPDF("l", "mm", "a4");
-    const dataToExport = isCurrentPageOnly ? currentRows : rows;
-    doc.text(`LAPORAN PATROLI ${isCurrentPageOnly ? 'HALAMAN ' + currentPage : 'TOTAL'}`, 14, 15);
+    doc.text(`LAPORAN PATROLI HALAMAN ${currentPage}`, 14, 15);
     autoTable(doc, {
       head: [["No", "Waktu", "Satpam", "Pos", "Catatan", "GPS"]],
-      body: dataToExport.map((r, i) => [
-        isCurrentPageOnly ? (indexOfFirstItem + i + 1) : (i + 1),
+      body: currentRows.map((r, i) => [
+        (indexOfFirstItem + i + 1),
         formatDateTime(r.captured_at_server || r.created_at),
-        r.satpam_name || "-", r.post_name || "-", r.note || "-", r.lat ? `${r.lat}, ${r.lng}` : "-"
+        r.satpam_name || r.username, r.post_name || "-", r.note || "-", r.lat ? `${r.lat}, ${r.lng}` : "-"
       ]),
       startY: 25,
       headStyles: { fillColor: [6, 78, 59] }
     });
-    doc.save(`Laporan_Patroli.pdf`);
+    doc.save(`Laporan_Patroli_Page_${currentPage}.pdf`);
   };
 
   const triggerDelete = (row) => {
@@ -159,8 +175,10 @@ export default function Reports() {
               <button onClick={handleReset} style={{ ...styles.btnReset, flex: isMobile ? 1 : 'none' }}>RESET</button>
             </div>
             <div style={{ display: "flex", gap: 10, width: isMobile ? '100%' : 'auto' }}>
-              <button onClick={() => exportPDF(true)} style={{ ...styles.btnExport, flex: isMobile ? 1 : 'none' }}>DOWNLOAD THIS PAGE PDF</button>
-              <button onClick={() => exportPDF(false)} style={{ ...styles.btnExport, flex: isMobile ? 1 : 'none' }}>DOWNLOAD ALL PAGE PDF</button>
+              <button onClick={exportPDF} style={{ ...styles.btnExport, flex: isMobile ? 1 : 'none' }}>EXPORT TO PDF</button>
+              
+              {/* ✅ TOMBOL EXCEL BARU (HIJAU) */}
+              <button onClick={exportToExcel} style={{ ...styles.btnExcel, flex: isMobile ? 1 : 'none' }}>EXPORT TO EXCEL</button>
             </div>
           </div>
         </div>
@@ -181,11 +199,11 @@ export default function Reports() {
                   <div style={styles.mobileActions}>
                     {r.lat && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <button onClick={() => window.open(`https://www.google.com/maps?q=${r.lat},${r.lng}`)} style={styles.btnActionSmall}>📍 Peta</button>
+                        <button onClick={() => window.open(`http://maps.google.com/?q=${r.lat},${r.lng}`)} style={styles.btnActionSmall}>📍 Peta</button>
                         <span style={{ fontSize: 9, color: '#94a3b8', textAlign: 'center' }}>±{Math.round(r.accuracy || 0)}m</span>
                       </div>
                     )}
-                    {r.photo_path && <button onClick={() => window.open(fotoUrl(r.photo_path))} style={styles.btnActionSmall}>📷 Foto</button>}
+                    {r.photo_path && <button onClick={() => setSelectedImg(fotoUrl(r.photo_path))} style={styles.btnActionSmall}>📷 Foto</button>}
                     <button onClick={() => triggerDelete(r)} style={styles.btnActionDelete}>🗑 Hapus</button>
                   </div>
                 </div>
@@ -214,12 +232,21 @@ export default function Reports() {
                     <td style={styles.tdStyle}>
                       {r.lat && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <a href={`https://www.google.com/maps?q=${r.lat},${r.lng}`} target="_blank" rel="noreferrer" style={styles.linkMaps}>📍 Maps</a>
+                          <a href={`http://maps.google.com/?q=${r.lat},${r.lng}`} target="_blank" rel="noreferrer" style={styles.linkMaps}>📍 Maps</a>
                           <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '600' }}>±{Math.round(r.accuracy || 0)}m</span>
                         </div>
                       )}
                     </td>
-                    <td style={styles.tdStyle}>{r.photo_path && <img src={fotoUrl(r.photo_path)} alt="patrol" style={styles.imgThumb} onClick={() => window.open(fotoUrl(r.photo_path))} />}</td>
+                    <td style={styles.tdStyle}>
+                      {r.photo_path && (
+                        <img 
+                          src={fotoUrl(r.photo_path)} 
+                          alt="patrol" 
+                          style={styles.imgThumb} 
+                          onClick={() => setSelectedImg(fotoUrl(r.photo_path))} 
+                        />
+                      )}
+                    </td>
                     <td style={styles.tdStyle}><button onClick={() => triggerDelete(r)} style={styles.btnHapus}>HAPUS</button></td>
                   </tr>
                 ))}</tbody>
@@ -239,6 +266,20 @@ export default function Reports() {
           )}
         </div>
       </div>
+
+      {selectedImg && (
+        <div style={styles.modalOverlayImg} onClick={() => setSelectedImg(null)}>
+          <div style={styles.modalContentImg} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeaderImg}>
+              <span style={{fontWeight: '800', fontSize: '14px'}}>Pratinjau Foto Patroli</span>
+              <button onClick={() => setSelectedImg(null)} style={styles.btnCloseImg}>✕</button>
+            </div>
+            <div style={styles.modalBodyImg}>
+              <img src={selectedImg} alt="Patrol Full" style={styles.fullImg} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {showDeleteModal && (
         <div style={styles.modalOverlay}>
@@ -277,19 +318,23 @@ const styles = {
   btnFilter: { backgroundColor: "#064e3b", color: "#fff", padding: "12px 25px", borderRadius: 8, border: "none", fontWeight: "800", cursor: "pointer" },
   btnReset: { backgroundColor: "#fff", color: "#64748b", padding: "12px 25px", borderRadius: 8, border: "1px solid #e2e8f0", fontWeight: "800", cursor: "pointer" },
   btnExport: { backgroundColor: "#064e3b", color: "#fff", padding: "12px 15px", borderRadius: 8, border: "none", fontWeight: "700", cursor: "pointer", fontSize: 12 },
+  
+  // ✅ STYLE BARU UNTUK TOMBOL EXCEL
+  btnExcel: { backgroundColor: "#15803d", color: "#fff", padding: "12px 15px", borderRadius: 8, border: "none", fontWeight: "700", cursor: "pointer", fontSize: 12, boxShadow: "0 4px 6px rgba(0,0,0,0.1)" },
+  
   tableHeader: { backgroundColor: "#064e3b", borderTop: "6px solid #b08d00" },
   thStyle: { padding: "18px 20px", color: "#fff", fontSize: 11, fontWeight: "800", textAlign: "left", textTransform: "uppercase", letterSpacing: "0.5px" },
   tdStyle: { padding: "15px 20px", fontSize: 14, color: "#1e293b", borderBottom: "1px solid #f1f5f9" },
   trStyle: { transition: 'background 0.2s' },
-  imgThumb: { width: 35, height: 35, borderRadius: 8, objectFit: "cover", cursor: 'pointer' },
+  imgThumb: { width: 35, height: 35, borderRadius: 8, objectFit: "cover", cursor: 'pointer', border: '1px solid #e2e8f0' },
   linkMaps: { color: "#b08d00", fontSize: 12, fontWeight: "700", textDecoration: "none" },
   btnHapus: { backgroundColor: "#fff", color: "#be123c", border: "1.5px solid #ffe4e6", padding: "6px 12px", borderRadius: 6, fontSize: 11, fontWeight: "800", cursor: "pointer" },
   mobileCard: { padding: '20px', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '10px' },
   mobileRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' },
   mobileLabel: { fontSize: '10px', fontWeight: '800', color: '#94a3b8' },
   mobileActions: { display: 'flex', gap: '10px', marginTop: '10px' },
-  btnActionSmall: { flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '11px', fontWeight: '800' },
-  btnActionDelete: { flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #ffe4e6', background: '#fef2f2', color: '#be123c', fontSize: '11px', fontWeight: '800' },
+  btnActionSmall: { flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '11px', fontWeight: '800', cursor: 'pointer' },
+  btnActionDelete: { flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid #ffe4e6', background: '#fef2f2', color: '#be123c', fontSize: '11px', fontWeight: '800', cursor: 'pointer' },
   paginationArea: { padding: "20px 25px", display: "flex", justifyContent: "space-between", alignItems: "center" },
   btnNav: { border: "1px solid #e2e8f0", background: "#fff", color: "#64748b", borderRadius: 6, padding: "5px 10px", cursor: "pointer" },
   btnPage: { border: "1px solid #e2e8f0", background: "transparent", minWidth: 30, height: 30, borderRadius: 6, cursor: "pointer", fontSize: 12 },
@@ -303,5 +348,11 @@ const styles = {
   modalFooter: { display: "flex", gap: "10px" },
   btnCancel: { flex: 1, padding: "12px", borderRadius: "12px", border: "1.5px solid #e2e8f0", backgroundColor: "#fff", color: "#64748b", fontWeight: "700", cursor: 'pointer' },
   btnConfirmRed: { flex: 1, padding: "12px", borderRadius: "12px", border: "none", backgroundColor: "#be123c", color: "#fff", fontWeight: "700", cursor: 'pointer' },
-  notifToast: { position: "fixed", top: "20px", right: "20px", color: "#fff", padding: "15px 25px", borderRadius: "12px", fontWeight: "700", boxShadow: "0 10px 15px rgba(0,0,0,0.2)", zIndex: 3000 }
+  modalOverlayImg: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 },
+  modalContentImg: { backgroundColor: '#064e3b', borderRadius: '24px', width: '90%', maxWidth: '650px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' },
+  modalHeaderImg: { padding: '15px 25px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' },
+  btnCloseImg: { background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'white' },
+  modalBodyImg: { padding: '15px', backgroundColor: '#f8fafc' },
+  fullImg: { width: '100%', height: 'auto', maxHeight: '70vh', borderRadius: '15px', objectFit: 'contain', display: 'block' },
+  notifToast: { position: "fixed", top: "20px", right: "20px", color: "#fff", padding: "15px 25px", borderRadius: "12px", fontWeight: "700", boxShadow: "0 10px 15px rgba(0,0,0,0.2)", zIndex: 4000 }
 };
