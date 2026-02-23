@@ -1,16 +1,17 @@
 const postsRepo = require("../../repositories/posts.repo");
 const tokenService = require("../../services/token.service");
-const env = require("../../config/env");
-
-// ✅ Fungsi untuk memastikan URL tidak berantakan
-function normalizeBaseUrl(u) {
-  return String(u || "").replace(/\/+$/, "");
-}
+const dbConfig = require("../../config/db"); // Tambahkan ini untuk akses db langsung
 
 exports.list = async (req, res, next) => {
   try {
-    const posts = await postsRepo.list();
-    res.json({ data: posts });
+    const db = await dbConfig.getPool();
+    
+    // Jangan pakai WHERE is_active = 1 di sini agar Admin tetap bisa lihat
+    const [rows] = await db.query(
+      "SELECT * FROM posts ORDER BY is_active DESC, post_name ASC"
+    );
+
+    res.json({ success: true, data: rows });
   } catch (err) { next(err); }
 };
 
@@ -26,10 +27,7 @@ exports.create = async (req, res, next) => {
       lat: lat || null,
       lng: lng || null,
     });
-    res.status(201).json({
-      message: "Pos berhasil dibuat ✅",
-      data: created,
-    });
+    res.status(201).json({ message: "Pos berhasil dibuat ✅", data: created });
   } catch (err) { next(err); }
 };
 
@@ -44,43 +42,45 @@ exports.update = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-exports.remove = async (req, res, next) => {
+/**
+ * ✅ PENGGANTI HAPUS: TOGGLE STATUS (SOFT DELETE)
+ * Mengubah status Aktif (1) menjadi Nonaktif (0) agar data laporan tidak hilang
+ */
+exports.toggleStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const affected = await postsRepo.deleteById(id);
-    if (!affected) {
-      return res.status(404).json({ message: "Pos tidak ditemukan" });
-    }
-    res.json({ message: "Pos berhasil dihapus ✅" });
+    const db = await dbConfig.getPool();
+
+    // Cek status saat ini
+    const [post] = await db.query("SELECT is_active FROM posts WHERE id = ?", [id]);
+    if (post.length === 0) return res.status(404).json({ message: "Pos tidak ditemukan" });
+
+    // Balikkan status (Toggle)
+    const newStatus = post[0].is_active === 1 ? 0 : 1;
+    await db.query("UPDATE posts SET is_active = ? WHERE id = ?", [newStatus, id]);
+
+    res.json({ 
+      success: true, 
+      message: newStatus === 1 ? "Pos Diaktifkan Kembali ✅" : "Pos Dinonaktifkan (Arsip Aman) 📂",
+      data: { is_active: newStatus }
+    });
   } catch (err) { next(err); }
 };
 
-/**
- * ✅ PERBAIKAN UTAMA: GENERATE QR LINK
- */
 exports.qrLink = async (req, res, next) => {
   try {
     const { id } = req.params;
     const post = await postsRepo.findById(id);
-    
-    if (!post) {
-      return res.status(404).json({ message: "Pos tidak ditemukan" });
-    }
+    if (!post) return res.status(404).json({ message: "Pos tidak ditemukan" });
 
-    // Generate Token
     const token = tokenService.generateToken({ postId: Number(id) });
-    
-    // ✅ Gunakan IP lokal agar HP Satpam bisa akses saat scan
     const ipServer = "192.168.18.75"; 
     const fullUrl = `http://${ipServer}:5173/scan?post_id=${id}&token=${token}`;
 
     res.json({
-      success: true, // Tambahkan status success agar frontend mudah validasi
-      post: {
-        id: post.id,
-        post_name: post.post_name,
-      },
-      url: fullUrl, // Sekarang link-nya lengkap (Absolute URL)
+      success: true,
+      post: { id: post.id, post_name: post.post_name },
+      url: fullUrl,
       token,
     });
   } catch (err) { next(err); }
@@ -90,9 +90,16 @@ exports.getPostById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const post = await postsRepo.findById(id);
-    if (!post) {
-      return res.status(404).json({ message: "Pos tidak ditemukan" });
-    }
+    if (!post) return res.status(404).json({ message: "Pos tidak ditemukan" });
     res.json({ data: post });
   } catch (err) { next(err); }
+};
+
+module.exports = {
+  list: exports.list,
+  create: exports.create,
+  update: exports.update,
+  toggleStatus: exports.toggleStatus, // ✅ Pastikan ini ada
+  qrLink: exports.qrLink,
+  getPostById: exports.getPostById
 };

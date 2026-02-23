@@ -2,30 +2,30 @@ import React, { useEffect, useState } from "react";
 import api from "../../api/axios";
 import { useNavigate } from "react-router-dom";
 import AdminNavbar from "../../components/admin/AdminNavbar";
-
-// ✅ 1. PASTIKAN LIBRARY INI SUDAH TERINSTAL (npm install qrcode.react lucide-react)
 import { QRCodeCanvas } from "qrcode.react"; 
 import { 
-  QrCode, Edit2, Trash2, PlusCircle, 
-  Download, Copy, XCircle, CheckCircle 
+  QrCode, Edit2, PlusCircle, 
+  Download, Copy, XCircle, CheckCircle, Power, MapPin, Loader2
 } from "lucide-react";
-
-// ✅ 2. IMPORT LOGO (Sesuaikan path assets kamu)
 import logoImg from "../../assets/logo_patroli.png"; 
+// ✅ Import SweetAlert2
+import Swal from 'sweetalert2';
 
 export default function ManagePosts() {
   const nav = useNavigate();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
-
-  // ✅ STATE UNTUK QR CODE DISPLAY
   const [qrUrl, setQrUrl] = useState("");
   const [qrMeta, setQrMeta] = useState(null);
 
+  // ✅ State Responsif
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
   useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
     fetchPosts();
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   async function fetchPosts() {
@@ -40,22 +40,40 @@ export default function ManagePosts() {
     }
   }
 
-  // ✅ FUNGSI GENERATE QR (Sekarang memicu tampilan di halaman ini)
+  const handleToggleStatus = async (postId, postName, isActive) => {
+    Swal.fire({
+      title: isActive ? 'Nonaktifkan Pos?' : 'Aktifkan Kembali?',
+      text: `Apakah Anda yakin ingin mengubah status "${postName}"?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: isActive ? '#be123c' : '#064e3b',
+      confirmButtonText: isActive ? 'Ya, Matikan' : 'Ya, Aktifkan',
+      cancelButtonText: 'Batal'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const res = await api.patch(`/admin/posts/${postId}/toggle`);
+          if (res.data.success) {
+            Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Status pos telah diperbarui.', timer: 1500, showConfirmButton: false });
+            fetchPosts(); 
+          }
+        } catch (err) {
+          Swal.fire({ icon: 'error', title: 'Gagal', text: 'Terjadi kesalahan sistem.', confirmButtonColor: '#be123c' });
+        }
+      }
+    });
+  };
+
   const handleGenerateQR = async (postId) => {
     try {
       const res = await api.get(`/admin/posts/${postId}/qr`);
       if (res.data && res.data.url) {
         setQrUrl(res.data.url);
-        setQrMeta({ 
-          post: res.data.post || { post_name: "Pos Patroli" }, 
-          token: res.data.token 
-        });
-        // Scroll ke atas agar kartu QR kelihatan
+        setQrMeta({ post: res.data.post || { post_name: "Pos Patroli" } });
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
-      console.error("Gagal generate QR:", err);
-      alert("Gagal membuat QR Code. Pastikan server aktif.");
+      Swal.fire({ icon: 'error', title: 'QR Gagal', text: 'Tidak dapat membuat kode QR.', confirmButtonColor: '#be123c' });
     }
   };
 
@@ -65,90 +83,53 @@ export default function ManagePosts() {
     const pngUrl = canvas.toDataURL("image/png");
     const downloadLink = document.createElement("a");
     downloadLink.href = pngUrl;
-    downloadLink.download = `QR_POS_${qrMeta?.post?.post_name || 'RSIFC'}.png`;
-    document.body.appendChild(downloadLink);
+    downloadLink.download = `QR_${qrMeta?.post?.post_name}.png`;
     downloadLink.click();
-    document.body.removeChild(downloadLink);
+    Swal.fire({ icon: 'success', title: 'Berhasil', text: 'QR Code berhasil diunduh.', timer: 1500, showConfirmButton: false });
   };
-
-  const confirmDelete = (post) => {
-    setSelectedPost(post);
-    setShowDeleteModal(true);
-  };
-
-  async function handleDelete() {
-    try {
-      await api.delete(`/admin/posts/${selectedPost.id}`);
-      setShowDeleteModal(false);
-      fetchPosts();
-    } catch (e) { 
-      alert("Gagal hapus pos"); 
-    }
-  }
 
   return (
-    <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ backgroundColor: "#f1f5f9", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
       <AdminNavbar />
       
-      <div style={{ maxWidth: 1000, margin: "40px auto", padding: "0 20px" }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto", padding: isMobile ? "20px 15px" : "40px 20px" }}>
         
-        {/* HEADER */}
-        <div style={styles.header}>
-          <div>
-            <h2 style={{ margin: 0, fontWeight: "800", color: "#1e293b" }}>Kelola Pos Patroli 🏢</h2>
-            <p style={{ color: "#64748b", fontSize: 14 }}>Daftar titik pengecekan RSI Fatimah Cilacap</p>
+        {/* ✅ HEADER SECTION DENGAN AKSEN EMAS */}
+        <div style={{ ...styles.header, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '15px' : '0' }}>
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            <div style={styles.barGold}></div>
+            <div>
+              <h2 style={{ margin: 0, fontWeight: "900", color: "#1e293b", fontSize: isMobile ? '22px' : '28px' }}>Kelola Pos Patroli <span style={{color: '#064e3b'}}>🏢</span></h2>
+              <p style={{ color: "#64748b", fontSize: 13, fontWeight: '500' }}>Manajemen titik pengecekan RSIFC</p>
+            </div>
           </div>
           <button onClick={() => nav("/admin/posts/new")} style={styles.btnAdd}>
-            <PlusCircle size={18} /> Tambah Pos Baru
+            <PlusCircle size={18} /> Tambah Pos
           </button>
         </div>
 
-        {/* ✅ PANEL QR CODE (Tampil hanya jika qrUrl tidak kosong) */}
+        {/* ✅ QR PREVIEW CARD (RESPONSIF) */}
         {qrUrl && (
           <div style={styles.qrContainer}>
             <div style={styles.qrCard}>
               <div style={styles.qrHeader}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <CheckCircle size={18} />
-                  <span>QR Code Pos Patroli Berhasil Dibuat</span>
+                  <CheckCircle size={18} /> <span>QR Code Siap Cetak</span>
                 </div>
-                <button onClick={() => setQrUrl("")} style={styles.btnClose}>
-                  <XCircle size={20} />
-                </button>
+                <button onClick={() => setQrUrl("")} style={styles.btnClose}><XCircle size={20} /></button>
               </div>
-              <div style={styles.qrBody}>
+              <div style={{ ...styles.qrBody, flexDirection: isMobile ? 'column' : 'row', textAlign: isMobile ? 'center' : 'left' }}>
                 <div style={styles.qrFrame}>
-                  <QRCodeCanvas 
-                    id="qr-canvas" 
-                    value={qrUrl} 
-                    size={160} 
-                    level="H" 
-                    imageSettings={{ 
-                      src: logoImg, 
-                      height: 35, 
-                      width: 35, 
-                      excavate: true 
-                    }} 
+                  <QRCodeCanvas id="qr-canvas" value={qrUrl} size={isMobile ? 200 : 250} level="M" includeMargin={true} 
+                    imageSettings={{ src: logoImg, height: 40, width: 40, excavate: true }} 
                   />
                 </div>
                 <div style={styles.qrDetails}>
-                  <div style={styles.miniLabel}>DETAIL POS</div>
-                  <h3 style={{ margin: "5px 0 20px 0", color: "#1e293b" }}>
-                    {qrMeta?.post?.post_name || "Nama Pos"}
-                  </h3>
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={downloadQR} style={styles.btnDownload}>
-                      <Download size={16} /> Unduh PNG
-                    </button>
-                    <button 
-                      onClick={() => { 
-                        navigator.clipboard.writeText(qrUrl); 
-                        alert("Link Berhasil Disalin!"); 
-                      }} 
-                      style={styles.btnCopy}
-                    >
-                      <Copy size={16} /> Salin Link
-                    </button>
+                  <div style={styles.miniLabel}>NAMA TITIK PATROLI</div>
+                  <h3 style={{ margin: "5px 0 20px 0", color: "#1e293b", fontSize: '20px' }}>{qrMeta?.post?.post_name}</h3>
+                  <div style={{ display: "flex", gap: 10, justifyContent: isMobile ? 'center' : 'flex-start' }}>
+                    <button onClick={downloadQR} style={styles.btnDownload}><Download size={16} /> Unduh PNG</button>
+                    <button onClick={() => { navigator.clipboard.writeText(qrUrl); Swal.fire({title: 'Tersalin!', icon: 'success', timer: 1000, showConfirmButton: false}) }} style={styles.btnCopy}><Copy size={16} /></button>
                   </div>
                 </div>
               </div>
@@ -156,45 +137,39 @@ export default function ManagePosts() {
           </div>
         )}
 
-        {/* LIST POS */}
         <div style={styles.card}>
-          <div style={styles.cardHeader}>📝 Daftar Pos Aktif</div>
-          <div style={{ padding: "10px 20px" }}>
+          <div style={styles.cardHeader}>📝 Daftar Seluruh Pos</div>
+          <div style={{ padding: isMobile ? "5px" : "10px 20px" }}>
             {loading ? (
-              <p style={{ textAlign: 'center', padding: '20px' }}>Memuat data...</p>
-            ) : posts.length === 0 ? (
-              <p style={{ textAlign: 'center', padding: '20px' }}>Belum ada pos.</p>
+              <div style={{textAlign: 'center', padding: '40px'}}><Loader2 className="animate-spin" color="#064e3b" size={32} /></div>
             ) : (
               posts.map((p) => (
-                <div key={p.id} style={styles.listItem}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
-                    <div style={styles.iconBox}>🏢</div>
+                <div key={p.id} style={{ 
+                  ...styles.listItem, 
+                  flexDirection: isMobile ? 'column' : 'row',
+                  alignItems: isMobile ? 'flex-start' : 'center',
+                  opacity: p.is_active ? 1 : 0.6, 
+                  backgroundColor: p.is_active ? 'transparent' : '#f8fafc' 
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 15, marginBottom: isMobile ? '12px' : '0' }}>
+                    <div style={{ ...styles.iconBox, backgroundColor: p.is_active ? "#f0fdf4" : "#f1f5f9", color: p.is_active ? "#166534" : "#94a3b8" }}>
+                      <MapPin size={20} />
+                    </div>
                     <div>
-                      <div style={{ fontWeight: "800", color: "#1e293b" }}>{p.post_name}</div>
-                      <div style={{ fontSize: 11, color: "#94a3b8" }}>
-                        ID: {p.id} • {p.location_desc || "Lokasi RSIFC"}
+                      <div style={{ fontWeight: "800", color: p.is_active ? "#1e293b" : "#94a3b8", fontSize: '15px' }}>
+                        {p.post_name} {!p.is_active && <span style={styles.archiveTag}>(Nonaktif)</span>}
                       </div>
+                      <div style={{ fontSize: 11, color: "#94a3b8", marginTop: '2px' }}>{p.location_desc || "Lokasi RSIFC"}</div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    {/* ✅ Tombol Generate QR */}
-                    <button 
-                      onClick={() => handleGenerateQR(p.id)} 
-                      style={styles.btnQr}
-                    >
-                      <QrCode size={16} /> QR
-                    </button>
-                    <button 
-                      onClick={() => nav(`/admin/posts/${p.id}/edit`)} 
-                      style={styles.btnEdit}
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button 
-                      onClick={() => confirmDelete(p)} 
-                      style={styles.btnDelete}
-                    >
-                      <Trash2 size={16} />
+                  
+                  <div style={{ display: "flex", gap: 8, width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-end' : 'flex-start' }}>
+                    {p.is_active && (
+                      <button onClick={() => handleGenerateQR(p.id)} style={styles.btnQr}><QrCode size={16} /> {isMobile ? '' : 'QR'}</button>
+                    )}
+                    <button onClick={() => nav(`/admin/posts/${p.id}/edit`)} style={styles.btnEdit}><Edit2 size={16} /></button>
+                    <button onClick={() => handleToggleStatus(p.id, p.post_name, p.is_active)} style={p.is_active ? styles.btnDelete : styles.btnActivate}>
+                      <Power size={16} />
                     </button>
                   </div>
                 </div>
@@ -203,52 +178,34 @@ export default function ManagePosts() {
           </div>
         </div>
       </div>
-
-      {/* MODAL HAPUS */}
-      {showDeleteModal && (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
-            <h3 style={{ marginTop: 0 }}>Hapus Pos?</h3>
-            <p style={{ fontSize: 14, color: "#64748b" }}>
-              Yakin menghapus <b>{selectedPost?.post_name}</b>?
-            </p>
-            <div style={{ display: "flex", gap: 10, marginTop: 25 }}>
-              <button onClick={() => setShowDeleteModal(false)} style={styles.btnCancel}>Batal</button>
-              <button onClick={handleDelete} style={styles.btnConfirm}>Ya, Hapus</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 const styles = {
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 },
-  btnAdd: { display: "flex", alignItems: "center", gap: 8, backgroundColor: "#064e3b", color: "#fff", border: "none", padding: "12px 20px", borderRadius: 10, fontWeight: "700", cursor: "pointer" },
-  card: { backgroundColor: "#fff", borderRadius: 15, boxShadow: "0 4px 6px rgba(0,0,0,0.05)", overflow: "hidden", border: "1px solid #f1f5f9" },
-  cardHeader: { padding: "15px 20px", backgroundColor: "#064e3b", color: "#fff", fontWeight: "700", fontSize: "14px" },
-  listItem: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px 0", borderBottom: "1px solid #f8fafc" },
-  iconBox: { width: 40, height: 40, backgroundColor: "#f8fafc", borderRadius: 10, display: "flex", justifyContent: "center", alignItems: "center", fontSize: "20px" },
+  header: { display: "flex", justifyContent: "space-between", marginBottom: 35 },
+  barGold: { width: '6px', height: '45px', backgroundColor: '#b08d00', borderRadius: '10px' },
+  btnAdd: { display: "flex", alignItems: "center", gap: 8, backgroundColor: "#064e3b", color: "#fff", border: "none", padding: "12px 20px", borderRadius: "12px", fontWeight: "800", cursor: "pointer", boxShadow: "0 4px 12px rgba(6,78,59,0.2)" },
   
-  // ✅ QR STYLES
-  qrContainer: { marginBottom: 35, animation: "fadeIn 0.4s ease" },
-  qrCard: { backgroundColor: "#fff", borderRadius: "20px", border: "2px solid #b08d00", overflow: "hidden", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" },
-  qrHeader: { padding: "12px 25px", backgroundColor: "#fffbeb", display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: "800", color: "#b08d00", fontSize: "13px" },
+  qrContainer: { marginBottom: 35 },
+  qrCard: { backgroundColor: "#fff", borderRadius: "24px", border: "2px solid #b08d00", overflow: "hidden", boxShadow: "0 10px 25px rgba(176,141,0,0.15)" },
+  qrHeader: { padding: "15px 25px", backgroundColor: "#fffbeb", display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: "800", color: "#b08d00", fontSize: "13px" },
   btnClose: { background: "none", border: "none", color: "#ef4444", cursor: "pointer" },
-  qrBody: { padding: "25px", display: "flex", gap: "30px", alignItems: "center", flexWrap: "wrap" },
-  qrFrame: { padding: "12px", border: "1px solid #e2e8f0", borderRadius: "12px", backgroundColor: "#fff" },
-  qrDetails: { flex: 1, minWidth: "200px" },
-  miniLabel: { fontSize: "10px", fontWeight: "800", color: "#94a3b8", letterSpacing: "1px" },
-  btnDownload: { display: "flex", alignItems: "center", gap: 8, backgroundColor: "#064e3b", color: "#fff", border: "none", padding: "10px 18px", borderRadius: 10, fontWeight: "700", cursor: "pointer", fontSize: "12px" },
-  btnCopy: { display: "flex", alignItems: "center", gap: 8, backgroundColor: "#f1f5f9", color: "#475569", border: "none", padding: "10px 18px", borderRadius: 10, fontWeight: "700", cursor: "pointer", fontSize: "12px" },
+  qrBody: { padding: "30px", display: "flex", gap: "30px", alignItems: "center" },
+  qrFrame: { padding: "15px", border: "1px solid #f1f5f9", borderRadius: "20px", backgroundColor: '#fff' },
+  qrDetails: { flex: 1 },
+  miniLabel: { fontSize: "10px", fontWeight: "800", color: "#94a3b8", letterSpacing: '1px' },
+  btnDownload: { display: "flex", alignItems: "center", gap: 8, backgroundColor: "#064e3b", color: "#fff", border: "none", padding: "12px 20px", borderRadius: "10px", fontWeight: "700", cursor: "pointer", fontSize: "13px" },
+  btnCopy: { display: "flex", alignItems: "center", backgroundColor: "#f1f5f9", color: "#475569", border: "none", padding: "12px", borderRadius: "10px", cursor: "pointer" },
 
-  btnQr: { display: "flex", alignItems: "center", gap: 5, padding: "8px 12px", borderRadius: 8, border: "1px solid #b08d00", backgroundColor: "#fff9eb", color: "#b08d00", cursor: "pointer", fontWeight: "700", fontSize: "12px" },
-  btnEdit: { padding: "8px", borderRadius: 8, border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer", color: "#64748b" },
-  btnDelete: { padding: "8px", borderRadius: 8, border: "none", backgroundColor: "#fef2f2", color: "#be123c", cursor: "pointer" },
-  
-  overlay: { position: "fixed", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(0,0,0,0.4)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 },
-  modal: { backgroundColor: "#fff", padding: "30px", borderRadius: "20px", textAlign: "center", width: "320px" },
-  btnCancel: { flex: 1, padding: "12px", borderRadius: "10px", border: "1px solid #e2e8f0", fontWeight: "600" },
-  btnConfirm: { flex: 1, padding: "12px", borderRadius: "10px", border: "none", backgroundColor: "#be123c", color: "#fff", fontWeight: "600" }
+  card: { backgroundColor: "#fff", borderRadius: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", overflow: "hidden", border: "1px solid #f1f5f9" },
+  cardHeader: { padding: "18px 25px", backgroundColor: "#064e3b", color: "#fff", fontWeight: "800", fontSize: "14px", letterSpacing: '0.5px' },
+  listItem: { display: "flex", justifyContent: "space-between", padding: "15px 20px", borderBottom: "1px solid #f8fafc", transition: "0.2s" },
+  iconBox: { width: 44, height: 44, borderRadius: "12px", display: "flex", justifyContent: "center", alignItems: "center" },
+  archiveTag: { fontSize: "10px", backgroundColor: "#f1f5f9", padding: "2px 6px", borderRadius: "4px", color: "#64748b", marginLeft: "5px" },
+
+  btnQr: { display: "flex", alignItems: "center", gap: 5, padding: "10px 15px", borderRadius: "10px", border: "1.5px solid #b08d00", backgroundColor: "#fffbeb", color: "#b08d00", cursor: "pointer", fontWeight: "800", fontSize: "12px" },
+  btnEdit: { padding: "10px", borderRadius: "10px", border: "1.5px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer", color: "#64748b" },
+  btnDelete: { padding: "10px", borderRadius: "10px", border: "none", backgroundColor: "#fef2f2", color: "#be123c", cursor: "pointer" },
+  btnActivate: { padding: "10px", borderRadius: "10px", border: "none", backgroundColor: "#f0fdf4", color: "#166534", cursor: "pointer" }
 };

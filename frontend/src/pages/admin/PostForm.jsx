@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/axios";
 import AdminNavbar from "../../components/admin/AdminNavbar";
+// ✅ Import SweetAlert2
+import Swal from 'sweetalert2';
 
 export default function PostForm() {
   const { id } = useParams();
@@ -14,9 +16,8 @@ export default function PostForm() {
 
   const [loading, setLoading] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
-  const [notif, setNotif] = useState({ show: false, status: "", message: "" });
 
-  // ✅ 1. AMBIL DATA ROLE USER UNTUK PENGECEKAN
+  // ✅ AMBIL DATA ROLE USER
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isViewer = user.role === "viewer";
 
@@ -34,15 +35,6 @@ export default function PostForm() {
     }
   }, [id]);
 
-  const showNotif = (status, msg) => {
-    setNotif({ show: true, status, message: msg });
-    if (status === "success") {
-      setTimeout(() => nav("/admin/dashboard"), 2000);
-    } else {
-      setTimeout(() => setNotif({ show: false, status: "", message: "" }), 3000);
-    }
-  };
-
   async function fetchPostDetail() {
     try {
       const res = await api.get(`/admin/posts/${id}`);
@@ -54,13 +46,18 @@ export default function PostForm() {
         setLng(responseData.lng || "");
       }
     } catch (e) {
-      showNotif("error", "Gagal mengambil data pos lama");
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Memuat',
+        text: 'Data pos lama tidak ditemukan.',
+        confirmButtonColor: '#be123c'
+      });
     }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isViewer) return; // ✅ Security: Viewer tidak boleh submit
+    if (isViewer) return; 
     
     setLoading(true);
     try {
@@ -71,16 +68,33 @@ export default function PostForm() {
         lng: lng 
       };
       
+      let res;
       if (isEdit) {
-        await api.put(`/admin/posts/${id}`, payload);
-        showNotif("success", "Berhasil! Data pos telah diperbarui.");
+        res = await api.put(`/admin/posts/${id}`, payload);
       } else {
-        await api.post("/admin/posts", payload);
-        showNotif("success", "Berhasil! Pos baru telah ditambahkan.");
+        res = await api.post("/admin/posts", payload);
       }
+
+      // ✅ NOTIFIKASI BERHASIL (SWEETALERT2)
+      Swal.fire({
+        icon: 'success',
+        title: isEdit ? 'Data Diperbarui!' : 'Pos Ditambahkan!',
+        text: 'Data pos keamanan berhasil disimpan ke sistem.',
+        confirmButtonColor: '#064e3b',
+        timer: 2000,
+        showConfirmButton: false
+      }).then(() => {
+        nav("/admin/posts"); // ✅ Arahkan ke daftar pos
+      });
+
     } catch (err) {
-      const errorMsg = err.response?.data?.message || "Gagal menyimpan data";
-      showNotif("error", errorMsg);
+      const errorMsg = err.response?.data?.message || "Gagal menyimpan data ke database.";
+      Swal.fire({
+        icon: 'error',
+        title: 'Terjadi Kesalahan',
+        text: errorMsg,
+        confirmButtonColor: '#be123c'
+      });
     } finally {
       setLoading(false);
     }
@@ -94,7 +108,7 @@ export default function PostForm() {
         
         <div style={{ marginBottom: 30 }}>
           <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 10 }}>
-            Dashboard  ›  <span style={{ color: "#b08d00", fontWeight: "700" }}>{isEdit ? "Edit Pos" : "Tambah Pos"}</span>
+            Daftar Pos  ›  <span style={{ color: "#b08d00", fontWeight: "700" }}>{isEdit ? "Edit Pos" : "Tambah Pos"}</span>
             {isViewer && <span style={{ marginLeft: 10, color: "#be123c", fontWeight: "bold" }}>(MODE LIHAT SAJA)</span>}
           </div>
           <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: "800", color: "#1e293b", margin: 0 }}>
@@ -113,7 +127,7 @@ export default function PostForm() {
                 value={postName}
                 onChange={(e) => setPostName(e.target.value)}
                 required
-                disabled={isViewer} // ✅ 2. KUNCI INPUT JIKA VIEWER
+                disabled={isViewer} 
               />
               {!isViewer && <small style={styles.helperText}>Identifikasi unik untuk setiap titik jaga.</small>}
             </div>
@@ -127,7 +141,7 @@ export default function PostForm() {
                   style={isViewer ? styles.inputDisabled : styles.input} 
                   value={lat}
                   onChange={(e) => setLat(e.target.value)}
-                  disabled={isViewer} // ✅ KUNCI INPUT
+                  disabled={isViewer} 
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -138,7 +152,7 @@ export default function PostForm() {
                   style={isViewer ? styles.inputDisabled : styles.input} 
                   value={lng}
                   onChange={(e) => setLng(e.target.value)}
-                  disabled={isViewer} // ✅ KUNCI INPUT
+                  disabled={isViewer} 
                 />
               </div>
             </div>
@@ -151,12 +165,11 @@ export default function PostForm() {
                 value={locationDesc}
                 onChange={(e) => setLocationDesc(e.target.value)}
                 required
-                disabled={isViewer} // ✅ KUNCI TEXTAREA
+                disabled={isViewer} 
               />
             </div>
 
             <div style={{ display: "flex", gap: 15, marginTop: 30, flexDirection: isMobile ? "column" : "row" }}>
-              {/* ✅ 3. SEMBUNYIKAN TOMBOL SIMPAN JIKA VIEWER */}
               {!isViewer ? (
                 <button type="submit" disabled={loading} style={styles.btnSave}>
                   {loading ? "⌛ Memproses..." : (isEdit ? "💾 Perbarui Data Pos" : "➕ Simpan Pos Baru")}
@@ -167,8 +180,8 @@ export default function PostForm() {
                 </div>
               )}
               
-              <button type="button" onClick={() => nav("/admin/dashboard")} style={styles.btnCancel}>
-                {isViewer ? "Kembali ke Dashboard" : "Batal"}
+              <button type="button" onClick={() => nav("/admin/posts")} style={styles.btnCancel}>
+                {isViewer ? "Kembali ke Daftar Pos" : "Batal"}
               </button>
             </div>
           </form>
@@ -178,17 +191,6 @@ export default function PostForm() {
             🛡️ Sistem Keamanan RS Islam Fatimah
         </footer>
       </div>
-
-      {notif.show && (
-        <div style={{
-          ...styles.notifToast, 
-          backgroundColor: notif.status === "success" ? "#064e3b" : "#be123c",
-          transform: notif.show ? 'translateY(0)' : 'translateY(-20px)',
-          opacity: notif.show ? 1 : 0
-        }}>
-          {notif.status === "success" ? "✅" : "❌"} {notif.message}
-        </div>
-      )}
     </div>
   );
 }
@@ -198,7 +200,6 @@ const styles = {
   inputGroup: { marginBottom: 25 },
   label: { display: "block", fontSize: "11px", fontWeight: "800", color: "#64748b", marginBottom: 10, letterSpacing: "0.5px" },
   input: { width: "100%", padding: "14px 18px", borderRadius: "12px", border: "1.5px solid #e2e8f0", fontSize: "15px", outline: "none", boxSizing: "border-box", backgroundColor: "#f8fafc" },
-  // ✅ Style untuk input yang dikunci
   inputDisabled: { width: "100%", padding: "14px 18px", borderRadius: "12px", border: "1.5px solid #e2e8f0", fontSize: "15px", outline: "none", boxSizing: "border-box", backgroundColor: "#f1f5f9", color: "#94a3b8", cursor: "not-allowed" },
   textarea: { width: "100%", padding: "14px 18px", borderRadius: "12px", border: "1.5px solid #e2e8f0", fontSize: "15px", outline: "none", boxSizing: "border-box", minHeight: "120px", fontFamily: "inherit", backgroundColor: "#f8fafc" },
   textareaDisabled: { width: "100%", padding: "14px 18px", borderRadius: "12px", border: "1.5px solid #e2e8f0", fontSize: "15px", outline: "none", boxSizing: "border-box", minHeight: "120px", fontFamily: "inherit", backgroundColor: "#f1f5f9", color: "#94a3b8", cursor: "not-allowed" },
@@ -206,5 +207,4 @@ const styles = {
   btnSave: { flex: 2, backgroundColor: "#064e3b", color: "#fff", padding: "16px", borderRadius: "12px", border: "none", fontWeight: "800", fontSize: "15px", cursor: "pointer", boxShadow: "0 4px 12px rgba(6, 78, 59, 0.2)" },
   btnCancel: { flex: 1, backgroundColor: "#fff", color: "#64748b", padding: "16px", borderRadius: "12px", border: "1.5px solid #e2e8f0", fontWeight: "700", fontSize: "15px", cursor: "pointer" },
   footer: { textAlign: "center", marginTop: 40, fontSize: "12px", color: "#cbd5e1", fontWeight: "600" },
-  notifToast: { position: "fixed", top: "30px", right: "30px", color: "#fff", padding: "15px 25px", borderRadius: "15px", fontWeight: "700", fontSize: "14px", boxShadow: "0 10px 25px rgba(0,0,0,0.2)", zIndex: 3000, transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)", display: "flex", alignItems: "center", gap: "12px" }
 };

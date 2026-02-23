@@ -1,4 +1,3 @@
-// backend/src/routes/admin.routes.js
 const express = require("express");
 const router = express.Router();
 
@@ -9,50 +8,44 @@ const active = require("../middlewares/active.middleware");
 const postsController = require("../controllers/admin/posts.controller");
 const reportsController = require("../controllers/admin/reports.controller");
 const usersController = require("../controllers/admin/users.controller");
+const missionsController = require("../controllers/missions.controller");
 
-// ✅ JALUR 1: Jalur untuk Melihat (Admin & Viewer Boleh Masuk)
-// Digunakan untuk fungsi GET/Membaca data
 const canView = [auth, role(["admin", "viewer"]), active];
-
-// ✅ JALUR 2: Jalur untuk Eksekusi (Hanya Admin yang Boleh)
-// Digunakan untuk fungsi Create, Update, Delete
 const adminOnly = [auth, role(["admin"]), active];
 
 // ==========================================
-// 🏢 MANAJEMEN POS (Admin & Viewer)
+// 📊 DASHBOARD & MONITORING
 // ==========================================
+router.get("/dashboard-stats", ...canView, missionsController.getDashboardData);
+router.get("/monitor", ...canView, missionsController.getAllSatpamMissions);
 
-// Admin & Viewer boleh melihat daftar dan detail pos
+// ✅ TAMBAHKAN RUTE INI: Detail progress per satpam
+router.get("/monitor/detail/:userId", ...canView, missionsController.getMissionDetail);
+
+// ==========================================
+// 🏢 MANAJEMEN POS
+// ==========================================
 router.get("/posts", ...canView, postsController.list);
 router.get("/posts/:id", ...canView, postsController.getPostById);
-
-// HANYA Admin yang boleh memodifikasi data pos
 router.post("/posts", ...adminOnly, postsController.create);
 router.put("/posts/:id", ...adminOnly, postsController.update);
-router.delete("/posts/:id", ...adminOnly, postsController.remove);
 router.get("/posts/:id/qr", ...adminOnly, postsController.qrLink);
+router.patch("/posts/:id/toggle", ...adminOnly, postsController.toggleStatus);
 
 // ==========================================
-// 📄 LAPORAN PATROLI (Admin & Viewer)
+// 📄 LAPORAN PATROLI
 // ==========================================
-
-// Admin & Viewer boleh melihat laporan
 router.get("/reports", ...canView, reportsController.listLogs);
-
-// HANYA Admin yang boleh menghapus histori laporan
 router.delete("/reports/:id", ...adminOnly, reportsController.deleteLog);
 
 // ==========================================
-// 👥 KELOLA USER (Admin & Viewer)
+// 👥 KELOLA USER & MISI
 // ==========================================
-
-// Admin & Viewer boleh melihat daftar user
 router.get("/users", ...canView, usersController.list);
-
-// HANYA Admin yang boleh mengelola akun (Tambah, Ganti Role, Reset Password, Hapus)
 router.post("/users", ...adminOnly, usersController.create);
 router.put("/users/:id/role", ...adminOnly, usersController.updateRole);
 router.put("/users/:id/password", ...adminOnly, usersController.resetPassword);
 router.delete("/users/:id", ...adminOnly, usersController.remove);
+router.post("/assign-mission", ...adminOnly, missionsController.assignMission);
 
 module.exports = router;

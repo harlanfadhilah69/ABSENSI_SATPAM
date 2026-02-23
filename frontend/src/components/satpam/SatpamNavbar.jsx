@@ -38,7 +38,7 @@ export default function SatpamNavbar() {
               <div style={{...styles.mainTitle, fontSize: isMobile ? "14px" : "18px"}}>
                 {isMobile ? "RSIFC PATROL" : "RS ISLAM FATIMAH CILACAP"}
               </div>
-              {!isMobile && <div style={styles.subTitle}>Security System</div>}
+              {!isMobile && <div style={styles.subTitle}>Security Dashboard</div>}
             </div>
           </div>
 
@@ -114,7 +114,7 @@ const styles = {
   logoImg: { width: "100%", height: "100%", objectFit: "contain" },
   textWrapper: { display: "flex", flexDirection: "column" },
   mainTitle: { fontWeight: "900", color: "#064e3b", lineHeight: "1.1" },
-  subTitle: { color: "#94a3b8", fontWeight: "700", fontSize: "13px", textTransform: 'uppercase' },
+  subTitle: { color: "#94a3b8", fontWeight: "700", fontSize: "12px", textTransform: 'uppercase' },
   rightSection: { display: "flex", alignItems: "center", gap: "15px" },
   profileWrapper: { display: "flex", alignItems: "center", gap: "10px", paddingRight: "10px" },
   userInfo: { textAlign: "right" },

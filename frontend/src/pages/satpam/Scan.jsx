@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode"; 
 import api from "../../api/axios";
 import logoImg from "../../assets/logo_patroli.png";
+import Swal from 'sweetalert2';
+import { QrCode, Navigation, Keyboard, Loader2 } from "lucide-react";
 
 export default function Scan() {
   const [params] = useSearchParams();
@@ -27,6 +29,14 @@ export default function Scan() {
     setStatus("⏳ Mengunci GPS Akurat..."); 
     await stopCamera(); 
 
+    Swal.fire({
+      title: 'Mengunci GPS...',
+      html: 'Sedang memastikan lokasi presisi Anda di area RSIFC.',
+      allowOutsideClick: false,
+      confirmButtonColor: '#064e3b',
+      didOpen: () => { Swal.showLoading(); }
+    });
+
     const getPreciseLocation = () => {
       return new Promise((resolve) => {
         if (!navigator.geolocation) return resolve(null);
@@ -40,20 +50,20 @@ export default function Scan() {
             if (!bestCoords || coords.accuracy < bestCoords.accuracy) {
               bestCoords = coords;
             }
-            if (coords.accuracy <= 10) {
+            if (coords.accuracy <= 15) { 
               clearTimeout(timer);
               navigator.geolocation.clearWatch(watchId);
               resolve(coords);
             }
           },
-          () => {}, 
+          () => resolve(null), 
           { enableHighAccuracy: true, maximumAge: 0 }
         );
 
         timer = setTimeout(() => {
           navigator.geolocation.clearWatch(watchId);
           resolve(bestCoords); 
-        }, 7000);
+        }, 5000); 
       });
     };
 
@@ -61,16 +71,20 @@ export default function Scan() {
       const coords = await getPreciseLocation();
       const accuracyParam = coords ? `&acc=${coords.accuracy}` : "";
       
-      // ✅ Validasi Token ke Backend
-      await api.get(`/patrol/scan?post_id=${pid}&token=${tok}${accuracyParam}`);
-      setStatus("✅ BERHASIL! Masuk...");
-      
-      // ✅ NAVIGASI KE HALAMAN PATROLI
-      setTimeout(() => {
+      Swal.fire({
+        icon: 'success',
+        title: 'Pos Terverifikasi!',
+        text: 'Lokasi berhasil dikunci. Membuka form patroli...',
+        confirmButtonColor: '#064e3b',
+        timer: 1500,
+        showConfirmButton: false
+      }).then(() => {
         nav(`/satpam/patrol?post_id=${pid}&token=${tok}${accuracyParam}`, { replace: true });
-      }, 1000);
+      });
+
     } catch (e) {
-      setStatus("❌ Gagal: " + (e?.response?.data?.message || "Token Invalid"));
+      Swal.fire({ icon: 'error', title: 'Verifikasi Gagal', confirmButtonColor: '#be123c' });
+      setStatus("❌ Gagal Verifikasi");
     }
   };
 
@@ -80,7 +94,9 @@ export default function Scan() {
               await html5QrCodeRef.current.stop();
               html5QrCodeRef.current.clear();
               isCameraRunning.current = false;
-          } catch (e) {}
+          } catch (e) {
+              console.warn("Gagal stop kamera:", e);
+          }
       }
   };
 
@@ -90,87 +106,79 @@ export default function Scan() {
 
     const startCamera = async (retryCount = 0) => {
         const scannerId = "reader";
-        if (html5QrCodeRef.current) await stopCamera();
-
-        const html5QrCode = new Html5Qrcode(scannerId);
-        html5QrCodeRef.current = html5QrCode;
-
+        
         try {
+            // Cek apakah ada kamera yang tersedia
             const devices = await Html5Qrcode.getCameras();
-            if (devices && devices.length) {
-                let cameraId = devices[0].id; 
-                const backCamera = devices.find(d => 
-                    d.label.toLowerCase().includes("back") || 
-                    d.label.toLowerCase().includes("belakang") ||
-                    d.label.toLowerCase().includes("environment")
-                );
-                if (backCamera) cameraId = backCamera.id;
-
-                await html5QrCode.start(
-                    cameraId, 
-                    { fps: 10, qrbox: 250, aspectRatio: 1.0 },
-                    (decodedText) => {
-                        if (isProcessingQR) return; 
-                        if (decodedText.includes("post_id=") && decodedText.includes("token=")) {
-                            isProcessingQR = true; 
-                            stopCamera();
-                            try {
-                                const urlObj = new URL(decodedText);
-                                const pid = urlObj.searchParams.get("post_id");
-                                const tok = urlObj.searchParams.get("token");
-                                if (pid && tok) {
-                                    // ✅ PERBAIKAN: Arahkan ke /satpam/scan bukan /scan
-                                    nav(`/satpam/scan?post_id=${pid}&token=${tok}`, { replace: true });
-                                }
-                            } catch (err) {}
-                        }
-                    },
-                    (errorMessage) => {}
-                );
-                isCameraRunning.current = true;
-                setStatus("Mencari QR Code...");
-            } else {
-                setStatus("Kamera tidak terdeteksi.");
-            }
-        } catch (err) {
-            const errStr = JSON.stringify(err) || "";
-            if (errStr.includes("NotReadable") && retryCount < 3) {
-                setTimeout(() => startCamera(retryCount + 1), 1500);
+            if (!devices || devices.length === 0) {
+                setStatus("Kamera tidak ditemukan.");
                 return;
             }
-            setStatus("Gagal membuka kamera.");
+
+            if (html5QrCodeRef.current) await stopCamera();
+            const html5QrCode = new Html5Qrcode(scannerId);
+            html5QrCodeRef.current = html5QrCode;
+
+            // Cari kamera belakang
+            let selectedCameraId = devices[0].id; 
+            const backCamera = devices.find(d => 
+                d.label.toLowerCase().includes("back") || 
+                d.label.toLowerCase().includes("belakang") ||
+                d.label.toLowerCase().includes("environment")
+            );
+            if (backCamera) selectedCameraId = backCamera.id;
+
+            await html5QrCode.start(
+                selectedCameraId, 
+                { fps: 15, qrbox: 250, aspectRatio: 1.0 },
+                (decodedText) => {
+                    if (isProcessingQR) return; 
+                    if (decodedText.includes("post_id=") && decodedText.includes("token=")) {
+                        isProcessingQR = true; 
+                        stopCamera();
+                        const urlObj = new URL(decodedText);
+                        const pid = urlObj.searchParams.get("post_id");
+                        const tok = urlObj.searchParams.get("token");
+                        if (pid && tok) {
+                            nav(`/scan?post_id=${pid}&token=${tok}`, { replace: true });
+                        }
+                    }
+                },
+                () => {}
+            );
+            isCameraRunning.current = true;
+            setStatus("Arahkan kamera ke QR Code");
+        } catch (err) {
+            console.error("Camera error:", err);
+            if (retryCount < 3) {
+                setTimeout(() => startCamera(retryCount + 1), 1000);
+            } else {
+                setStatus("Gagal akses kamera. Pastikan izin aktif.");
+            }
         }
     };
 
-    setTimeout(() => startCamera(0), 800);
+    setTimeout(() => startCamera(0), 500);
     return () => { stopCamera(); };
   }, [nav, urlPostId, urlToken]);
 
-  const handleManualSubmit = (e) => {
-    e.preventDefault();
-    if (manualId) {
-        processScan(manualId, "manual_entry");
-    }
-  };
-
   return (
     <div style={styles.containerStyle}>
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <div style={styles.logoWrapper}>
-          <img src={logoImg} alt="Logo RS" style={styles.logoImageStyle} />
-        </div>
+      <div style={{ textAlign: "center", marginBottom: 30 }}>
+        <div style={styles.logoWrapper}><img src={logoImg} alt="Logo" style={styles.logoImageStyle} /></div>
         <h1 style={styles.titleStyle}>RS ISLAM FATIMAH</h1>
         <p style={styles.subtitleStyle}>SISTEM PATROLI KEAMANAN</p>
       </div>
 
       <div style={styles.formCard}>
-        <h2 style={styles.cardTitle}>Scan QR Pos</h2>
-        <p style={styles.cardSubtitle}>Pindai kode QR pada titik patroli untuk verifikasi lokasi</p>
-
+        <div style={styles.cardHeaderDecoration}></div>
+        <h2 style={styles.cardTitle}><QrCode size={22} style={{marginRight: 10, color: '#064e3b'}}/> Verifikasi Pos</h2>
+        
         {urlPostId ? (
           <div style={styles.statusLoadingBox}>
-              <h3 style={{margin: 0}}>{status}</h3>
-              <p style={{fontSize: 12, margin: "5px 0 0 0"}}>Mohon tunggu sebentar...</p>
+              <Loader2 className="animate-spin" size={32} style={{marginBottom: 10, color: '#064e3b'}} />
+              <h3 style={{margin: 0, fontSize: '16px', color: '#166534'}}>{status}</h3>
+              <p style={{fontSize: 11, marginTop: 5, color: '#166534', opacity: 0.8}}>Jangan tutup halaman ini...</p>
           </div>
         ) : (
           <>
@@ -182,87 +190,74 @@ export default function Scan() {
             </div>
             
             <div style={styles.statusText}>
-               <span style={styles.dotActive}></span> {status}
+              <span style={styles.dotActive}></span> 
+              <span>{status}</span>
             </div>
 
-            <div style={styles.divider}>
-                <span style={styles.dividerText}>ATAU</span>
-            </div>
+            <div style={styles.divider}><span style={styles.dividerText}>ATAU INPUT MANUAL</span></div>
 
             <div style={styles.manualSection}>
-                <label style={styles.labelStyle}>ID POS PATROLI</label>
-                <form onSubmit={handleManualSubmit} style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                <form onSubmit={(e) => { e.preventDefault(); if(manualId) processScan(manualId, "manual_entry"); }} style={styles.manualForm}>
                     <div style={styles.inputWrapper}>
-                        <span style={styles.iconInput}>🔢</span>
+                        <Keyboard size={18} style={styles.iconInput} />
                         <input 
                             type="number" 
-                            placeholder="Masukkan ID Pos secara manual" 
+                            placeholder="Ketik ID Pos..." 
                             value={manualId}
                             onChange={(e) => setManualId(e.target.value)}
                             style={styles.inputStyle}
                             required
                         />
                     </div>
-                    <button type="submit" style={styles.btnSubmit}>
-                        ➜ MASUK
-                    </button>
+                    <button type="submit" style={styles.btnSubmit}>MASUK</button>
                 </form>
             </div>
           </>
         )}
       </div>
 
-      <div style={styles.footerMenu}>
-          <span>Pusat Bantuan</span>
-          <span>Konfigurasi</span>
-          <span>Riwayat Patroli</span>
+      <div style={styles.instructionBox}>
+         <Navigation size={14} color="#b08d00" />
+         <span>Pastikan GPS aktif & berada di titik pos.</span>
       </div>
-      <p style={styles.copyright}>© 2026 RS Islam Fatimah. Dikembangkan untuk Keamanan & Ketertiban.</p>
+      <p style={styles.copyright}>© 2026 RS Islam Fatimah Cilacap</p>
 
       <style>{`
-        @keyframes scan {
-          0% { top: 10%; }
-          100% { top: 90%; }
-        }
-        .scan-line {
-          position: absolute;
-          width: 80%;
-          height: 2px;
-          background: rgba(234, 179, 8, 0.6);
-          left: 10%;
-          box-shadow: 0 0 15px #eab308;
-          animation: scan 2s infinite alternate ease-in-out;
-          z-index: 5;
-        }
+        @keyframes scan { 0% { top: 10%; } 100% { top: 90%; } }
+        .scan-line { position: absolute; width: 85%; height: 3px; background: linear-gradient(to right, transparent, #b08d00, transparent); left: 7.5%; box-shadow: 0 0 15px #b08d00; animation: scan 2.5s infinite alternate ease-in-out; z-index: 5; }
       `}</style>
     </div>
   );
 }
 
 const styles = {
-  containerStyle: { backgroundColor: "#fcfdfe", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px", fontFamily: "'Inter', sans-serif" },
-  logoWrapper: { width: "65px", height: "65px", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 10px" },
-  logoImageStyle: { width: "150%", height: "150%", objectFit: "contain" },
-  titleStyle: { fontSize: "20px", fontWeight: "800", color: "#064e3b", margin: "0", letterSpacing: "1px" },
-  subtitleStyle: { fontSize: "10px", fontWeight: "600", color: "#b08d00", margin: "5px 0 0 0", letterSpacing: "2px" },
-  formCard: { maxWidth: "480px", width: "100%", padding: "40px 30px", borderRadius: "35px", background: "white", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.08)", marginTop: "25px", position: "relative", border: "1px solid #f0f0f0" },
-  cardTitle: { textAlign: "center", fontSize: "24px", fontWeight: "700", color: "#111827", margin: "0" },
-  cardSubtitle: { textAlign: "center", fontSize: "13px", color: "#6b7280", margin: "10px 0 30px 0", lineHeight: "1.5" },
-  cameraWrapper: { width: "100%", aspectRatio: "1/1", background: "#111", borderRadius: "24px", overflow: "hidden", position: "relative", border: "1px solid #333" },
-  statusText: { marginTop: 20, fontSize: "13px", fontWeight: "600", color: "#374151", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" },
-  dotActive: { width: "8px", height: "8px", backgroundColor: "#eab308", borderRadius: "50%", display: "inline-block" },
-  divider: { margin: "30px 0", textAlign: "center", position: "relative", borderTop: "1px solid #f3f4f6" },
-  dividerText: { position: "absolute", top: "-10px", left: "50%", transform: "translateX(-50%)", background: "white", padding: "0 15px", fontSize: "11px", fontWeight: "800", color: "#d1d5db" },
-  labelStyle: { fontSize: "11px", fontWeight: "800", color: "#9ca3af", letterSpacing: "1px" },
-  inputWrapper: { position: "relative", flex: 1 },
-  iconInput: { position: "absolute", left: "15px", top: "50%", transform: "translateY(-50%)", fontSize: "14px" },
-  inputStyle: { width: "100%", padding: "14px 15px 14px 45px", borderRadius: "15px", border: "1px solid #f3f4f6", backgroundColor: "#f9fafb", fontSize: "14px", boxSizing: "border-box", outline: "none" },
-  btnSubmit: { padding: "0 25px", background: "#064e3b", color: "#fff", border: "none", borderRadius: "15px", cursor: "pointer", fontWeight: "700", fontSize: "13px" },
-  footerMenu: { display: "flex", gap: "20px", marginTop: "30px", fontSize: "12px", color: "#9ca3af", fontWeight: "600" },
-  copyright: { marginTop: "15px", fontSize: "10px", color: "#d1d5db" },
-  statusLoadingBox: { padding: "40px 20px", background: "#f0fdf4", color: "#166534", borderRadius: "20px", textAlign: "center", border: "1px solid #dcfce7" },
-  cornerTL: { position: "absolute", width: "30px", height: "30px", border: "4px solid #eab308", top: "20px", left: "20px", borderRight: "none", borderBottom: "none", borderRadius: "8px 0 0 0", zIndex: 10 },
-  cornerTR: { position: "absolute", width: "30px", height: "30px", border: "4px solid #eab308", top: "20px", right: "20px", borderLeft: "none", borderBottom: "none", borderRadius: "0 8px 0 0", zIndex: 10 },
-  cornerBL: { position: "absolute", width: "30px", height: "30px", border: "4px solid #eab308", bottom: "20px", left: "20px", borderRight: "none", borderTop: "none", borderRadius: "0 0 0 8px", zIndex: 10 },
-  cornerBR: { position: "absolute", width: "30px", height: "30px", border: "4px solid #eab308", bottom: "20px", right: "20px", borderLeft: "none", borderTop: "none", borderRadius: "0 0 8px 0", zIndex: 10 },
+  containerStyle: { backgroundColor: "#f1f5f9", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px", fontFamily: "'Inter', sans-serif" },
+  logoWrapper: { width: "70px", height: "70px", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 12px", backgroundColor: '#fff', borderRadius: '18px', padding: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' },
+  logoImageStyle: { width: "100%", height: "100%", objectFit: "contain" },
+  titleStyle: { fontSize: "20px", fontWeight: "900", color: "#064e3b", margin: "0", letterSpacing: '1px' },
+  subtitleStyle: { fontSize: "11px", fontWeight: "700", color: "#b08d00", margin: "4px 0 0 0", letterSpacing: '2px' },
+  formCard: { maxWidth: "420px", width: "100%", padding: "35px 30px", borderRadius: "32px", background: "white", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.08)", marginTop: "10px", border: "1px solid #fff", position: 'relative', overflow: 'hidden' },
+  cardHeaderDecoration: { position: 'absolute', top: 0, left: 0, width: '100%', height: '6px', background: 'linear-gradient(to right, #064e3b, #b08d00)' },
+  cardTitle: { textAlign: "center", fontSize: "22px", fontWeight: "900", color: "#1e293b", marginBottom: "30px", display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  cameraWrapper: { width: "100%", aspectRatio: "1/1", background: "#000", borderRadius: "24px", overflow: "hidden", position: "relative", border: '4px solid #f1f5f9' },
+  statusText: { marginTop: 20, fontSize: "14px", fontWeight: "700", color: "#475569", textAlign: "center", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' },
+  dotActive: { width: "10px", height: "10px", backgroundColor: "#b08d00", borderRadius: "50%" },
+  divider: { margin: "30px 0", textAlign: "center", position: "relative", borderTop: "1.5px dashed #e2e8f0" },
+  dividerText: { position: "absolute", top: "-10px", left: "50%", transform: "translateX(-50%)", background: "white", padding: "0 15px", fontSize: "11px", fontWeight: "900", color: "#94a3b8" },
+  
+  // ✅ PERBAIKAN FORM NABRAK (Responsif sesuai screenshot kamu)
+  manualSection: { width: '100%', marginTop: '5px' },
+  manualForm: { display: 'flex', flexDirection: window.innerWidth <= 480 ? 'column' : 'row', gap: '12px', width: '100%' },
+  inputWrapper: { position: "relative", flex: 1, width: '100%' },
+  iconInput: { position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: '#94a3b8', zIndex: 10 },
+  inputStyle: { width: "100%", padding: "14px 14px 14px 45px", borderRadius: "16px", border: "1.5px solid #f1f5f9", fontSize: "15px", outline: "none", backgroundColor: '#f8fafc', fontWeight: '600', boxSizing: 'border-box' },
+  btnSubmit: { padding: "14px 25px", background: "#064e3b", color: "#fff", border: "none", borderRadius: "16px", fontWeight: "800", cursor: "pointer", boxShadow: '0 4px 10px rgba(6,78,59,0.2)', whiteSpace: 'nowrap' },
+  
+  instructionBox: { marginTop: '25px', display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#fffbeb', padding: '10px 20px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', color: '#854d0e', border: '1px solid #fef3c7' },
+  copyright: { marginTop: "30px", fontSize: "11px", color: "#94a3b8", fontWeight: '600' },
+  statusLoadingBox: { padding: "40px 20px", background: "#f0fdf4", color: "#166534", borderRadius: "24px", textAlign: "center", display: 'flex', flexDirection: 'column', alignItems: 'center' },
+  cornerTL: { position: "absolute", width: "25px", height: "25px", border: "4px solid #b08d00", top: "20px", left: "20px", borderRight: "none", borderBottom: "none", borderRadius: '4px 0 0 0', zIndex: 6 },
+  cornerTR: { position: "absolute", width: "25px", height: "25px", border: "4px solid #b08d00", top: "20px", right: "20px", borderLeft: "none", borderBottom: "none", borderRadius: '0 4px 0 0', zIndex: 6 },
+  cornerBL: { position: "absolute", width: "25px", height: "25px", border: "4px solid #b08d00", bottom: "20px", left: "20px", borderRight: "none", borderTop: "none", borderRadius: '0 0 0 4px', zIndex: 6 },
+  cornerBR: { position: "absolute", width: "25px", height: "25px", border: "4px solid #b08d00", bottom: "20px", right: "20px", borderLeft: "none", borderTop: "none", borderRadius: '0 0 4px 0', zIndex: 6 },
 };

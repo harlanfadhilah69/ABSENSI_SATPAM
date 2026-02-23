@@ -1,7 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuthContext } from "../../context/AuthContext";
 import { useState, useEffect } from "react"; 
-// ✅ Import logo RS
 import logoImg from "../../assets/logo_patroli.png"; 
 
 export default function AdminNavbar() {
@@ -9,10 +8,8 @@ export default function AdminNavbar() {
   const navigate = useNavigate();
   const location = useLocation(); 
 
-  // ✅ Deteksi role viewer (Normalisasi huruf kecil & hapus spasi hantu)
   const isViewer = user?.role?.toLowerCase().trim() === "viewer";
 
-  // State untuk deteksi mobile & menu lipat
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 850);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -50,11 +47,20 @@ export default function AdminNavbar() {
               <Link to="/admin/dashboard" style={isActive("/admin/dashboard") ? styles.activeNavLink : styles.navLink}>
                 Dashboard
               </Link>
+              
+              <Link to="/admin/monitor" style={isActive("/admin/monitor") ? styles.activeNavLink : styles.navLink}>
+                Monitor Misi
+              </Link>
+
+              {/* ✅ TOMBOL DAFTAR POS (KELOLA POS) */}
+              <Link to="/admin/posts" style={isActive("/admin/posts") ? styles.activeNavLink : styles.navLink}>
+                Daftar Pos
+              </Link>
+
               <Link to="/admin/reports" style={isActive("/admin/reports") ? styles.activeNavLink : styles.navLink}>
                 Reports
               </Link>
               
-              {/* ✅ TOMBOL KELOLA USER SUDAH DIMUNCULKAN KEMBALI */}
               <Link to="/admin/users" style={isActive("/admin/users") ? styles.activeNavLink : styles.navLink}>
                 Kelola User
               </Link>
@@ -67,7 +73,6 @@ export default function AdminNavbar() {
               <div style={styles.userInfo}>
                 <div style={styles.userDetail}>
                   <span style={styles.userName}>{user?.name || "User"}</span>
-                  {/* ✅ DINAMIS: Ubah label berdasarkan role */}
                   <span style={{...styles.userRole, color: isViewer ? "#0369a1" : "#94a3b8"}}>
                     {isViewer ? "Viewer Mode" : "Super Admin"}
                   </span>
@@ -76,14 +81,12 @@ export default function AdminNavbar() {
               </div>
             )}
 
-            {/* Tombol Logout (Desktop) */}
             {!isMobile && (
               <button onClick={() => setShowLogoutModal(true)} style={styles.logoutBtn}>
                 Logout
               </button>
             )}
 
-            {/* Tombol Burger (Mobile) */}
             {isMobile && (
               <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={styles.burgerBtn}>
                 {isMenuOpen ? "✕" : "☰"}
@@ -98,15 +101,23 @@ export default function AdminNavbar() {
             <Link to="/admin/dashboard" onClick={() => setIsMenuOpen(false)} style={isActive("/admin/dashboard") ? styles.mobileActiveLink : styles.mobileLink}>
               🏠 Dashboard
             </Link>
+
+            <Link to="/admin/monitor" onClick={() => setIsMenuOpen(false)} style={isActive("/admin/monitor") ? styles.mobileActiveLink : styles.mobileLink}>
+              🛡️ Monitor Misi
+            </Link>
+
+            {/* ✅ DAFTAR POS DI MOBILE */}
+            <Link to="/admin/posts" onClick={() => setIsMenuOpen(false)} style={isActive("/admin/posts") ? styles.mobileActiveLink : styles.mobileLink}>
+              🏢 Kelola Pos
+            </Link>
+
             <Link to="/admin/reports" onClick={() => setIsMenuOpen(false)} style={isActive("/admin/reports") ? styles.mobileActiveLink : styles.mobileLink}>
               📄 Reports
             </Link>
             
-            {/* ✅ TOMBOL KELOLA USER SUDAH DIMUNCULKAN KEMBALI DI MOBILE */}
             <Link to="/admin/users" onClick={() => setIsMenuOpen(false)} style={isActive("/admin/users") ? styles.mobileActiveLink : styles.mobileLink}>
               👥 Kelola User
             </Link>
-            
 
             <div style={styles.mobileUserSection}>
                <div style={{fontSize: '14px', fontWeight: '700'}}>{user?.name}</div>
@@ -139,7 +150,6 @@ export default function AdminNavbar() {
   );
 }
 
-// --- STYLES OBJECT ---
 const styles = {
   navbar: { backgroundColor: "#fff", boxShadow: "0 2px 15px rgba(0,0,0,0.08)", position: "sticky", top: 0, zIndex: 1000, fontFamily: "'Inter', sans-serif" },
   navContainer: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 20px", height: "70px", maxWidth: "1200px", margin: "0 auto" },
