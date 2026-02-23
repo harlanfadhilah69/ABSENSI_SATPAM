@@ -1,43 +1,10 @@
 const jwt = require("jsonwebtoken");
 const env = require("../config/env");
 const usersRepo = require("../repositories/users.repo");
-// ✅ Mengambil objek dbConfig yang berisi fungsi getPool
 const dbConfig = require("../config/db"); 
 
-/**
- * FUNGSI PEMBANTU: Setup Misi Harian Satpam
- */
-const setupDailyMissions = async (userId) => {
-  const today = new Intl.DateTimeFormat('en-CA').format(new Date()); 
+// ✅ Fungsi setupDailyMissions SUDAH DIHAPUS agar misi tidak terbuat otomatis saat login
 
-  try {
-    // ✅ Memanggil fungsi getPool() karena db.js kamu adalah singleton
-    const db = await dbConfig.getPool(); 
-
-    const [existing] = await db.query(
-      "SELECT id FROM patrol_missions WHERE user_id = ? AND mission_date = ?",
-      [userId, today]
-    );
-
-    if (existing.length === 0) {
-      const [posts] = await db.query("SELECT id FROM posts WHERE is_active = 1");
-      
-      if (posts.length > 0) {
-        const missionValues = posts.map(p => [userId, p.id, today, 'pending']);
-        // ✅ Bulk insert misi hari ini
-        await db.query(
-          "INSERT INTO patrol_missions (user_id, post_id, mission_date, status) VALUES ?",
-          [missionValues]
-        );
-        console.log(`[QuestSystem] ✅ Berhasil buat ${posts.length} misi untuk Satpam ID: ${userId}`);
-      }
-    }
-  } catch (err) {
-    console.error("[QuestSystem] ❌ Gagal setup misi:", err.message);
-  }
-};
-
-// ✅ Pastikan menggunakan exports agar tidak undefined di file rute
 exports.register = async (req, res, next) => {
   try {
     const { name, email, username, password, role } = req.body;
@@ -67,10 +34,8 @@ exports.login = async (req, res, next) => {
 
     const cleanRole = row.role.toLowerCase().trim();
 
-    // ✅ Setup misi sebelum token dikirim
-    if (cleanRole === 'satpam') {
-      await setupDailyMissions(row.id);
-    }
+    // ✅ SEKARANG LOGIN BERSIH: Tidak ada setupDailyMissions di sini
+    // Misi hanya akan ada jika Admin memberikan tugas secara manual
 
     const token = jwt.sign({ id: row.id, role: cleanRole }, env.JWT_SECRET, { expiresIn: "7d" });
 

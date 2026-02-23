@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
 import api from "../../api/axios";
 import AdminNavbar from "../../components/admin/AdminNavbar";
-// ✅ Import SweetAlert2
 import Swal from 'sweetalert2';
-import { Power, Trash2, Key, Shield, UserPlus, Loader2 } from "lucide-react";
+import { Power, Trash2, Key, Shield, UserPlus, Loader2, X, User, Mail, AtSign, Lock, ShieldCheck } from "lucide-react";
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
@@ -68,7 +67,6 @@ export default function ManageUsers() {
       confirmButtonColor: isActive ? '#be123c' : '#064e3b',
       confirmButtonText: isActive ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan',
       cancelButtonText: 'Batal',
-      borderRadius: '20px'
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
@@ -181,7 +179,7 @@ export default function ManageUsers() {
           
           {!isViewer && (
             <button onClick={() => setShowAddModal(true)} style={styles.btnAddMain}>
-              <UserPlus size={18} /> {isMobile ? "Tambah" : "Daftarkan User Baru"}
+              <UserPlus size={18} /> {isMobile ? "Tambah User" : "Daftarkan User Baru"}
             </button>
           )}
         </div>
@@ -247,26 +245,57 @@ export default function ManageUsers() {
         </div>
       </div>
 
-      {/* MODAL REGISTER */}
+      {/* MODAL REGISTER - FIXED VIEW */}
       {!isViewer && showAddModal && (
         <div style={styles.modalOverlay}>
-          <div style={{...styles.modalContent, maxWidth: '450px'}}>
-            <div style={styles.modalIconGold}>➕</div>
-            <h3 style={styles.modalTitle}>Daftarkan Akun Baru</h3>
-            <form onSubmit={handleRegister} style={{textAlign: 'left', marginTop: '10px'}}>
-              <div style={styles.inputGroup}><label style={styles.labelModal}>NAMA LENGKAP</label><input type="text" required style={styles.modalInput} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
-              <div style={styles.inputGroup}><label style={styles.labelModal}>EMAIL</label><input type="email" required style={styles.modalInput} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></div>
-              <div style={styles.inputGroup}><label style={styles.labelModal}>USERNAME</label><input type="text" required style={styles.modalInput} value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} /></div>
-              <div style={styles.inputGroup}><label style={styles.labelModal}>PASSWORD</label><input type="password" required style={styles.modalInput} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} /></div>
+          <div style={styles.modalContent}>
+            {/* Header Modal */}
+            <div style={styles.modalHeader}>
+                <div style={styles.modalHeaderTitle}>
+                    <div style={styles.modalIconGold}><UserPlus size={20}/></div>
+                    <div style={{textAlign: 'left'}}>
+                        <h3 style={styles.modalTitle}>Daftarkan Akun</h3>
+                        <p style={{fontSize: '11px', color: '#64748b', margin: 0}}>Tambahkan personil keamanan baru</p>
+                    </div>
+                </div>
+                <button onClick={() => setShowAddModal(false)} style={styles.btnCloseModal}><X size={20}/></button>
+            </div>
+
+            {/* Form Modal dengan Scroll jika kepanjangan */}
+            <form onSubmit={handleRegister} style={styles.formScrollable}>
               <div style={styles.inputGroup}>
-                <label style={styles.labelModal}>ROLE AKUN</label>
+                <label style={styles.labelModal}><User size={12}/> NAMA LENGKAP</label>
+                <input type="text" required placeholder="Nama asli personil..." style={styles.modalInput} value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              </div>
+              <div style={styles.inputGroup}>
+                <label style={styles.labelModal}><Mail size={12}/> EMAIL RESMI</label>
+                <input type="email" required placeholder="contoh@rsifc.com" style={styles.modalInput} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+              </div>
+              
+              <div style={{display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '15px'}}>
+                <div style={styles.inputGroup}>
+                    <label style={styles.labelModal}><AtSign size={12}/> USERNAME</label>
+                    <input type="text" required placeholder="Untuk login..." style={styles.modalInput} value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
+                </div>
+                <div style={styles.inputGroup}>
+                    <label style={styles.labelModal}><Lock size={12}/> PASSWORD</label>
+                    <input type="password" required placeholder="Minimal 6 karakter" style={styles.modalInput} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                </div>
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={styles.labelModal}><ShieldCheck size={12}/> HAK AKSES (ROLE)</label>
                 <select style={styles.modalInput} value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-                  <option value="satpam">SATPAM</option><option value="admin">ADMIN</option><option value="viewer">VIEWER</option>
+                  <option value="satpam">SATPAM (Petugas Lapangan)</option>
+                  <option value="admin">ADMIN (Pengelola Sistem)</option>
+                  <option value="viewer">VIEWER (Hanya Pantau)</option>
                 </select>
               </div>
+
+              {/* Footer Modal Buttons */}
               <div style={styles.modalFooter}>
                 <button type="button" onClick={() => setShowAddModal(false)} style={styles.btnCancel}>Batal</button>
-                <button type="submit" style={styles.btnConfirmGreen}>Daftarkan</button>
+                <button type="submit" style={styles.btnConfirmGreen}>Simpan & Aktifkan</button>
               </div>
             </form>
           </div>
@@ -281,20 +310,20 @@ export default function ManageUsers() {
 const styles = {
   barGold: { width: '6px', height: '45px', backgroundColor: '#b08d00', borderRadius: '10px' },
   viewerBanner: { backgroundColor: "#e0f2fe", color: "#0369a1", padding: "15px 20px", borderRadius: "12px", marginBottom: "20px", border: "1px solid #bae6fd", fontSize: "14px", fontWeight: "500" },
-  cardContainer: { backgroundColor: "#fff", borderRadius: "24px", overflow: 'hidden', boxShadow: "0 4px 20px rgba(0,0,0,0.04)", marginBottom: 25, border: "1px solid #f1f5f9" },
+  cardContainer: { backgroundColor: "#fff", borderRadius: "24px", overflow: 'hidden', boxShadow: "0 10px 25px -5px rgba(0,0,0,0.05)", marginBottom: 25, border: "1px solid #f1f5f9" },
   tableHeader: { backgroundColor: "#064e3b" },
-  thStyle: { padding: "18px 25px", fontSize: "11px", color: "#fff", fontWeight: "900", textTransform: 'uppercase', letterSpacing: '1px' },
+  thStyle: { padding: "20px 25px", fontSize: "11px", color: "#fff", fontWeight: "900", textTransform: 'uppercase', letterSpacing: '1px' },
   tdStyle: { padding: "18px 25px", fontSize: "14px", borderBottom: "1px solid #f8fafc", color: '#475569' },
   trStyle: { transition: 'background 0.2s' },
   actionGroupWeb: { display: "flex", gap: "8px", justifyContent: "center" },
-  mobileCard: { padding: '20px', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '12px' },
+  mobileCard: { padding: '20px', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#fff', borderRadius: '15px', marginBottom: '10px' },
   mobileRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   mobileLabel: { fontSize: '10px', fontWeight: '900', color: '#94a3b8' },
   mobileActions: { display: 'flex', gap: '8px', marginTop: '10px' },
   badgeSatpam: { padding: "4px 12px", borderRadius: "20px", backgroundColor: "#f0fdf4", color: "#166534", fontSize: "10px", fontWeight: "800" },
   badgeAdmin: { padding: "4px 12px", borderRadius: "20px", backgroundColor: "#fff1f2", color: "#be123c", fontSize: "10px", fontWeight: "800" },
   badgeViewer: { padding: "4px 12px", borderRadius: "20px", backgroundColor: "#eff6ff", color: "#1e40af", fontSize: "10px", fontWeight: "800" },
-  btnAddMain: { display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#064e3b', color: '#fff', border: 'none', padding: '12px 25px', borderRadius: '14px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(6,78,59,0.3)' },
+  btnAddMain: { display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#064e3b', color: '#fff', border: 'none', padding: '14px 30px', borderRadius: '16px', fontWeight: '800', cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(6,78,59,0.3)', transition: '0.3s' },
   btnUbah: { padding: "8px 14px", backgroundColor: "#064e3b", color: "#fff", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: '700', fontSize: '12px' },
   btnReset: { padding: "8px", backgroundColor: "#b08d00", color: "#fff", border: "none", borderRadius: "10px", cursor: "pointer", display: 'flex', alignItems: 'center' },
   btnHapus: { padding: "8px", backgroundColor: "#fef2f2", color: "#be123c", border: "none", borderRadius: "10px", cursor: "pointer", display: 'flex', alignItems: 'center' },
@@ -305,14 +334,22 @@ const styles = {
   btnAktifMobile: { flex: 1, padding: '12px', borderRadius: '12px', background: '#f0fdf4', color: '#166534', border: 'none', fontWeight: '800', display: 'flex', justifyContent: 'center', gap: 6 },
   btnNonaktifMobile: { flex: 1, padding: '12px', borderRadius: '12px', background: '#fef2f2', color: '#be123c', border: 'none', fontWeight: '800', display: 'flex', justifyContent: 'center', gap: 6 },
   footer: { textAlign: 'center', color: "#94a3b8", fontSize: "11px", paddingBottom: "40px", marginTop: '20px', letterSpacing: '1px' },
-  modalOverlay: { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(8px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 2000 },
-  modalContent: { backgroundColor: "#fff", width: "90%", padding: "35px", borderRadius: "28px", textAlign: "center", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" },
-  modalIconGold: { width: "50px", height: "50px", backgroundColor: "#fef3c7", color: "#b08d00", borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 15px", fontSize: "20px" },
-  modalTitle: { fontSize: "22px", fontWeight: "900", color: "#1e293b" },
-  modalInput: { width: "100%", padding: "14px", borderRadius: "12px", border: "1.5px solid #f1f5f9", marginBottom: "15px", outline: "none", boxSizing: 'border-box', fontSize: '14px', backgroundColor: '#f8fafc' },
-  inputGroup: { marginBottom: '5px' },
-  labelModal: { fontSize: '10px', fontWeight: '900', color: '#94a3b8', marginBottom: '8px', display: 'block', letterSpacing: '0.5px' },
-  modalFooter: { display: "flex", gap: "12px", marginTop: '25px' },
-  btnCancel: { flex: 1, padding: "14px", borderRadius: "14px", border: "1.5px solid #e2e8f0", backgroundColor: "#fff", color: "#64748b", fontWeight: "800", cursor: 'pointer' },
-  btnConfirmGreen: { flex: 1, padding: "14px", borderRadius: "14px", border: "none", backgroundColor: "#064e3b", color: "#fff", fontWeight: "800", cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(6,78,59,0.2)' },
+  
+  // MODAL STYLES IMPROVED
+  modalOverlay: { position: "fixed", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(6px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 3000, padding: '20px' },
+  modalContent: { backgroundColor: "#fff", width: "100%", maxWidth: "550px", borderRadius: "32px", overflow: "hidden", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)", display: 'flex', flexDirection: 'column', maxHeight: '90vh' },
+  modalHeader: { padding: '25px 30px', borderBottom: '1.5px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff' },
+  modalHeaderTitle: { display: 'flex', alignItems: 'center', gap: '15px' },
+  modalIconGold: { width: "45px", height: "45px", backgroundColor: "#fef3c7", color: "#b08d00", borderRadius: "14px", display: "flex", justifyContent: "center", alignItems: "center" },
+  modalTitle: { fontSize: "20px", fontWeight: "900", color: "#1e293b", margin: 0 },
+  btnCloseModal: { background: '#f1f5f9', border: 'none', borderRadius: '10px', width: '35px', height: '35px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#64748b', cursor: 'pointer' },
+  
+  formScrollable: { padding: '30px', overflowY: 'auto', flex: 1 },
+  inputGroup: { marginBottom: '20px' },
+  labelModal: { fontSize: '10px', fontWeight: '900', color: '#94a3b8', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px', letterSpacing: '0.5px', textTransform: 'uppercase' },
+  modalInput: { width: "100%", padding: "16px", borderRadius: "16px", border: "2px solid #f1f5f9", outline: "none", boxSizing: 'border-box', fontSize: '14px', backgroundColor: '#f8fafc', transition: '0.3s border-color', fontWeight: '600', color: '#1e293b' },
+  
+  modalFooter: { display: "flex", gap: "15px", marginTop: '10px', paddingTop: '20px' },
+  btnCancel: { flex: 1, padding: "16px", borderRadius: "16px", border: "2px solid #f1f5f9", backgroundColor: "#fff", color: "#64748b", fontWeight: "800", cursor: 'pointer' },
+  btnConfirmGreen: { flex: 1, padding: "16px", borderRadius: "16px", border: "none", backgroundColor: "#064e3b", color: "#fff", fontWeight: "800", cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(6,78,59,0.3)' },
 };

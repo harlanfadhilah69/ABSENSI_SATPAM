@@ -10,6 +10,8 @@ const active = require("../middlewares/active.middleware");
 const postsController = require("../controllers/admin/posts.controller");
 const reportsController = require("../controllers/admin/reports.controller");
 const usersController = require("../controllers/admin/users.controller");
+const missionsController = require("../controllers/missions.controller"); 
+const authMiddleware = require("../middlewares/auth.middleware");
 
 /**
  * 🔐 DEFINISI JALUR AKSES (RBAC)
@@ -62,5 +64,7 @@ router.post("/users", ...adminOnly, usersController.create);
 router.put("/users/:id/role", ...adminOnly, usersController.updateRole);
 router.put("/users/:id/password", ...adminOnly, usersController.resetPassword);
 router.delete("/users/:id", ...adminOnly, usersController.remove);
+router.get("/assigned-ids/:userId", missionsController.getAssignedPostIds);
+router.delete("/delete/:userId/:postId", missionsController.deleteSingleMission);
 
 module.exports = router;

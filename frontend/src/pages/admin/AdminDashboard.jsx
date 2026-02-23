@@ -123,7 +123,7 @@ export default function AdminDashboard() {
             </div>
             <div style={styles.panelBody}>
               {data.alerts.length === 0 ? (
-                <div style={styles.emptyMsgGreen}>✅ Semua jadwal terpenuhi.</div>
+                <div style={styles.emptyMsgGreen}>Belum ada Jadwal Patroli.</div>
               ) : (
                 data.alerts.map((a, i) => (
                   <div key={i} style={styles.alertItemGold}>
@@ -194,7 +194,7 @@ const styles = {
   logItem: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #f8fafc" },
   logText: { color: "#334155" },
   logTime: { fontSize: "10px", color: "#94a3b8", fontWeight: "800", backgroundColor: '#f8fafc', padding: '3px 6px', borderRadius: '5px' },
-  emptyMsgGreen: { textAlign: "center", padding: "30px", color: "#059669", fontSize: "13px", fontWeight: "700" },
+  emptyMsgGreen: { textAlign: "center", padding: "30px", color: "#854d0e", fontSize: "13px", fontWeight: "700" },
   emptyMsgGray: { textAlign: "center", padding: "30px", color: "#94a3b8", fontSize: "13px" },
   footerStyle: { marginTop: 40, paddingBottom: 30, textAlign: "center", color: "#94a3b8", fontSize: 11 }
 };
